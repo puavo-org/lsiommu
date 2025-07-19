@@ -38,7 +38,6 @@ int main(int argc, char **argv)
 			printf("\t%s\n", groups[i].devices[j].description);
 	}
 
-	iommu_groups_free(groups, nr_groups);
 	arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
 	return 0;
 }

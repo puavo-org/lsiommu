@@ -19,10 +19,11 @@ add_project_arguments(
 )
 
 sources = [
-  'main.c',
-  'iommu.c',
-  'strbuf.c',
   'down.c',
+  'iommu.c',
+  'main.c',
+  'strbuf.c',
+  'udev.c',
 ]
 
 deps = [

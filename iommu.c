@@ -15,6 +15,7 @@
 #include "down.h"
 #include "iommu.h"
 #include "strbuf.h"
+#include "udev.h"
 
 static int iommu_group_id(struct udev_device *dev)
 {
@@ -122,13 +123,11 @@ static void iommu_devices_sift_down(struct pci_device *devices, size_t start,
 		child = (root * 2) + 1;
 		swap = root;
 
-		ret = strcmp(devices[swap].bdf, devices[child].bdf);
-		if (ret < 0)
+		if (devices[swap].addr < devices[child].addr)
 			swap = child;
 
 		if (child + 1 <= end) {
-			ret = strcmp(devices[swap].bdf, devices[child + 1].bdf);
-			if (ret < 0)
+			if (devices[swap].addr < devices[child + 1].addr)
 				swap = child + 1;
 		}
 
@@ -214,6 +213,7 @@ static int iommu_get_group(struct udev *udev,
 	const char *path;
 	int group_id;
 	size_t i;
+	int ret;
 
 	path = udev_list_entry_get_name(dev_list_entry);
 
@@ -248,9 +248,10 @@ static int iommu_get_group(struct udev *udev,
 		return -E2BIG;
 
 	pci_dev = &target->devices[target->device_count];
-	pci_dev->bdf = strdup(udev_device_get_sysname(dev));
-	if (!pci_dev->bdf)
-		return -ENOMEM;
+	ret = udev_read_pci_addr(dev, &pci_dev->addr);
+	if (ret)
+		return ret;
+
 	target->device_count++;
 
 	if (iommu_devices_read_description(dev, pci_dev->description,
@@ -286,10 +287,8 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 	udev_list_entry_foreach(dev_list_entry, devices) {
 		ret = iommu_get_group(udev, dev_list_entry, groups,
 				      &groups_cnt, groups_size);
-		if (ret != 0) {
-			iommu_groups_free(groups, groups_cnt);
+		if (ret != 0)
 			return ret;
-		}
 	}
 
 	for (i = 0; i < groups_cnt; i++)
@@ -300,7 +299,6 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 			malloc(groups_cnt * sizeof(struct iommu_group));
 
 		if (!scratch) {
-			iommu_groups_free(groups, groups_cnt);
 			free(groups);
 			return -ENOMEM;
 		}
@@ -309,17 +307,4 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 	}
 
 	return groups_cnt;
-}
-
-void iommu_groups_free(struct iommu_group *groups, size_t nr_groups)
-{
-	size_t i, j;
-
-	if (!groups)
-		return;
-
-	for (i = 0; i < nr_groups; i++) {
-		for (j = 0; j < groups[i].device_count; j++)
-			free(groups[i].devices[j].bdf);
-	}
 }

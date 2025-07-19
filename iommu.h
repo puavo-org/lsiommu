@@ -8,13 +8,14 @@
 
 #include <sys/types.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define PCI_NO_DESCRIPTION "N/A"
 #define PCI_DESCRIPTION_SIZE 256
 #define IOMMU_MAX_DEVICES_PER_GROUP 32
 
 struct pci_device {
-	char *bdf;
+	uint32_t addr;
 	char description[PCI_DESCRIPTION_SIZE];
 };
 
