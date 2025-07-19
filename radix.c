@@ -37,8 +37,8 @@ void radix_sort(void *data, void *scratch, size_t nr_members,
 			       member_size);
 		}
 
-		tmp = data;
-		data = scratch;
-		scratch = tmp;
+		tmp = data_ptr;
+		data_ptr = scratch_ptr;
+		scratch_ptr = tmp;
 	}
 }
