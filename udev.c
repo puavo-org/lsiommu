@@ -3,6 +3,7 @@
  * Copyright(c) Opinsys Oy 2025
  */
 
+#define _GNU_SOURCE
 #include <errno.h>
 #include <libudev.h>
 #include <stdint.h>
