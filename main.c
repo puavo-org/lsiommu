@@ -33,9 +33,9 @@ int main(int argc, char **argv)
 	}
 
 	for (i = 0; i < (size_t)nr_groups; i++) {
-		printf("iommu group %d\n", groups[i].id);
 		for (j = 0; j < groups[i].device_count; j++)
-			printf("\t%s\n", groups[i].devices[j].description);
+			printf("Group %03d %s\n", groups[i].id,
+			       groups[i].devices[j].description);
 	}
 
 	arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
