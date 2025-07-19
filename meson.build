@@ -22,6 +22,7 @@ sources = [
   'down.c',
   'iommu.c',
   'main.c',
+  'radix.c',
   'strbuf.c',
   'udev.c',
 ]

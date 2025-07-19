@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include "down.h"
 #include "iommu.h"
+#include "radix.h"
 #include "strbuf.h"
 #include "udev.h"
 
@@ -111,98 +112,6 @@ static int iommu_devices_read_description(struct udev_device *dev, char *desc,
 	return 0;
 }
 
-static void iommu_devices_sift_down(struct pci_device *devices, size_t start,
-				   size_t end)
-{
-	struct pci_device temp;
-	size_t root = start;
-	size_t child, swap;
-	int ret;
-
-	while ((root * 2) + 1 <= end) {
-		child = (root * 2) + 1;
-		swap = root;
-
-		if (devices[swap].addr < devices[child].addr)
-			swap = child;
-
-		if (child + 1 <= end) {
-			if (devices[swap].addr < devices[child + 1].addr)
-				swap = child + 1;
-		}
-
-		if (swap == root)
-			return;
-
-		temp = devices[root];
-		devices[root] = devices[swap];
-		devices[swap] = temp;
-
-		root = swap;
-	}
-}
-
-static void iommu_devices_sort(struct pci_device *devices, size_t count)
-{
-	struct pci_device temp;
-	size_t start, end;
-
-	if (count < 2)
-		return;
-
-	start = (count / 2) - 1;
-	while (start < count) {
-		iommu_devices_sift_down(devices, start, count - 1);
-		if (start == 0)
-			break;
-		start--;
-	}
-
-	end = count - 1;
-	while (end > 0) {
-		temp = devices[end];
-		devices[end] = devices[0];
-		devices[0] = temp;
-
-		end--;
-		iommu_devices_sift_down(devices, 0, end);
-	}
-}
-
-static void iommu_group_sort(struct iommu_group *data,
-			     struct iommu_group *scratch, size_t nelem)
-{
-	unsigned int value;
-	size_t cnt[256];
-	size_t idx[256];
-	size_t b, i, j;
-	void *tmp;
-
-	for (b = 0; b < sizeof(int); b++) {
-		memset(cnt, 0, sizeof(cnt));
-
-		for (i = 0; i < nelem; i++) {
-			value = (unsigned int)data[i].id;
-			cnt[(value >> (b * 8)) & 0xFF]++;
-		}
-
-		idx[0] = 0;
-		for (i = 1; i < 256; i++)
-			idx[i] = idx[i - 1] + cnt[i - 1];
-
-		for (i = 0; i < nelem; i++) {
-			value = (unsigned int)data[i].id;
-			j = idx[(value >> (b * 8)) & 0xFF]++;
-			memcpy(&scratch[j], &data[i],
-			       sizeof(struct iommu_group));
-		}
-
-		tmp = data;
-		data = scratch;
-		scratch = tmp;
-	}
-}
-
 static int iommu_get_group(struct udev *udev,
 			   struct udev_list_entry *dev_list_entry,
 			   struct iommu_group *groups, size_t *groups_cnt,
@@ -291,19 +200,31 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 			return ret;
 	}
 
-	for (i = 0; i < groups_cnt; i++)
-		iommu_devices_sort(groups[i].devices, groups[i].device_count);
+	for (i = 0; i < groups_cnt; i++) {
+		if (groups[i].device_count > 1) {
+			down(down_malloc) struct pci_device *scratch = malloc(
+				groups[i].device_count * sizeof(*scratch));
+			if (!scratch)
+				return -ENOMEM;
+
+			/* Sort PCI devices. */
+			radix_sort(groups[i].devices, scratch,
+				   groups[i].device_count,
+				   sizeof(struct pci_device),
+				   offsetof(struct pci_device, addr));
+		}
+	}
 
 	if (groups_cnt > 1) {
 		down(down_malloc) struct iommu_group *scratch =
 			malloc(groups_cnt * sizeof(struct iommu_group));
-
-		if (!scratch) {
-			free(groups);
+		if (!scratch)
 			return -ENOMEM;
-		}
 
-		iommu_group_sort(groups, scratch, groups_cnt);
+		/* Sort IOMMU groups. */
+		radix_sort(groups, scratch, groups_cnt,
+			   sizeof(struct iommu_group),
+			   offsetof(struct iommu_group, id));
 	}
 
 	return groups_cnt;
