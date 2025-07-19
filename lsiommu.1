@@ -1,0 +1,26 @@
+.\" Man page for lsiommu
+.TH lsiommu 1 "July 2025" "lsiommu 1.0" "User Commands"
+.SH NAME
+lsiommu \- list all IOMMU groups
+.SH SYNOPSIS
+.B lsiommu
+[\-h|\-\-help]
+.SH DESCRIPTION
+.B lsiommu
+lists all IOMMU groups and their associated PCI devices. It uses the
+.BR libudev (3)
+library to discover hardware, query device properties, and determine IOMMU groupings. This method avoids manual scanning of the
+.BR sysfs (5)
+filesystem.
+.PP
+Groups are sorted by their numeric ID, and devices within each group are sorted by their PCI address.
+.SH OPTIONS
+.TP
+.B \-h, \-\-help
+Print help and exit.
+.SH SEE ALSO
+.BR udev (7),
+.BR libudev (3),
+.BR sysfs (5)
+.SH AUTHOR
+Jarkko Sakkinen 2025
