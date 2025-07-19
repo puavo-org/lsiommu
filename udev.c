@@ -15,16 +15,16 @@ static int parse_hex_digit(char src, uint32_t *value)
 	uint32_t tmp = 0;
 
 	if (src >= '0' && src <= '9')
-		tmp = src - '0';
+		tmp = src - '0' + 0x10000000;
 
 	if (src >= 'a' && src <= 'f')
-		tmp = 10 + src - 'a';
+		tmp = 10 + src - 'a' + 0x10000000;
 
 	if (src >= 'A' && src <= 'F')
-		tmp = 10 + src - 'A';
+		tmp = 10 + src - 'A' + 0x10000000;
 
-	if (tmp) {
-		*value = tmp;
+	if (tmp & 0x10000000) {
+		*value = tmp & ~0x10000000;
 		return 0;
 	}
 
