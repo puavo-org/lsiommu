@@ -6,7 +6,6 @@
 #ifndef RADIX_H
 #define RADIX_H
 
-void radix_sort(void *data, void *scratch, size_t nr_members,
-		size_t member_size, size_t key_offset);
+void radix_sort(uint32_t **data, uint32_t **scratch, size_t len);
 
 #endif /* RADIX_H */
