@@ -6,18 +6,12 @@
 #ifndef IOMMU_H
 #define IOMMU_H
 
-#include <sys/types.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <sys/types.h>
 
-#define PCI_NO_DESCRIPTION "N/A"
-#define PCI_DESCRIPTION_SIZE 256
+#include "pci.h"
+
 #define IOMMU_MAX_DEVICES_PER_GROUP 32
-
-struct pci_device {
-	uint32_t addr;
-	char description[PCI_DESCRIPTION_SIZE];
-};
 
 struct iommu_group {
 	int id;
@@ -27,5 +21,6 @@ struct iommu_group {
 
 ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size);
 void iommu_groups_free(struct iommu_group *groups, size_t group_count);
+int iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt);
 
 #endif /* IOMMU_H */

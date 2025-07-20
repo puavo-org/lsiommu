@@ -20,22 +20,38 @@ add_project_arguments(
 
 sources = [
   'down.c',
-  'iommu.c',
   'main.c',
+  'pci.c',
   'radix.c',
   'strbuf.c',
-  'udev.c',
+  'sysfs.c',
+  'iommu/main.c',
 ]
+
+extra_cflags = []
+optional_deps = []
+discovery = get_option('discovery')
+if discovery == 'udev'
+  sources += 'iommu/udev.c'
+  optional_deps += dependency('libudev')
+  extra_cflags += '-DCONFIG_LIBUDEV'
+elif discovery == 'sysfs'
+  sources += 'iommu/sysfs.c'
+else
+  error('Unsupported discovery method')
+endif
+
+extra_cflags += '-DDISCOVERY_METHOD=' + discovery
 
 deps = [
   dependency('argtable2'),
-  dependency('libudev'),
 ]
 
 exe = executable(
   'lsiommu',
   sources,
-  dependencies: deps,
+  c_args: extra_cflags,
+  dependencies: deps + optional_deps,
   install: true,
 )
 

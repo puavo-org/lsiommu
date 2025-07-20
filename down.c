@@ -3,11 +3,10 @@
  * Copyright(c) Opinsys Oy 2025
  */
 
-#include <libudev.h>
+#include <dirent.h>
 #include <stdlib.h>
-
-#include "strbuf.h"
 #include "down.h"
+#include "strbuf.h"
 
 void down_malloc(void *ptr)
 {
@@ -20,6 +19,15 @@ void down_strbuf(struct strbuf **buf)
 	if (buf && *buf)
 		free(*buf);
 }
+
+void down_dir(DIR **dir)
+{
+	if (dir && *dir)
+		closedir(*dir);
+}
+
+#ifdef CONFIG_LIBUDEV
+#include <libudev.h>
 
 void down_udev(struct udev **udev)
 {
@@ -38,3 +46,4 @@ void down_udev_enumerate(struct udev_enumerate **enumerate)
 	if (enumerate && *enumerate)
 		udev_enumerate_unref(*enumerate);
 }
+#endif /* CONFIG_LIBUDEV */

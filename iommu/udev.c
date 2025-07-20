@@ -14,9 +14,7 @@
 #include <unistd.h>
 #include "down.h"
 #include "iommu.h"
-#include "radix.h"
 #include "strbuf.h"
-#include "udev.h"
 
 static int iommu_group_id(struct udev_device *dev)
 {
@@ -54,18 +52,13 @@ static int iommu_group_id(struct udev_device *dev)
 	return (int)id;
 }
 
-static int iommu_devices_read_description(struct udev_device *dev, char *desc,
-					 unsigned int size)
+static int iommu_read_pci_props(struct udev_device *dev, struct pci_dev_props *props)
 {
-	char bdf_tmp[32] = {0};
 	const char *revision;
 	const char *vendor;
 	const char *device;
 	const char *class;
 	const char *bdf;
-
-	if (size > INT_MAX)
-		return -EINVAL;
 
 	bdf = udev_device_get_sysname(dev);
 	vendor = udev_device_get_sysattr_value(dev, "vendor");
@@ -76,39 +69,20 @@ static int iommu_devices_read_description(struct udev_device *dev, char *desc,
 	if (!bdf || !vendor || !device || !class)
 		return -ENOENT;
 
-	down(down_strbuf) struct strbuf *buf = strbuf_alloc(512);
-	if (!buf)
-		return -ENOMEM;
-
-	if (strlen(bdf) > 5)
-		strncpy(bdf_tmp, &bdf[5], sizeof(bdf_tmp) - 1);
-	else
-		strncpy(bdf_tmp, bdf, sizeof(bdf_tmp) - 1);
-
-	strbuf_append(buf, bdf_tmp);
-	strbuf_append(buf, " Class ");
-	strbuf_append(buf, class + 2);
-	strbuf_append(buf, ": Vendor ");
-	strbuf_append(buf, vendor + 2);
-	strbuf_append(buf, " Device ");
-	strbuf_append(buf, device + 2);
-	strbuf_append(buf, " [");
-	strbuf_append(buf, vendor + 2);
-	strbuf_append(buf, ":");
-	strbuf_append(buf, device + 2);
-	strbuf_append(buf, "]");
+	strncpy(props->bdf, bdf, sizeof(props->bdf) - 1);
+	strncpy(props->vendor, vendor, sizeof(props->vendor) - 1);
+	strncpy(props->device, device, sizeof(props->device) - 1);
+	strncpy(props->class, class, sizeof(props->class) - 1);
 
 	if (revision) {
-		strbuf_append(buf, " (rev ");
-		strbuf_append(buf, revision + 2);
-		strbuf_append(buf, ")");
+		props->has_revision = true;
+		strncpy(props->revision, revision,
+			sizeof(props->revision) - 1);
+	} else {
+		props->has_revision = false;
 	}
 
-	if (buf->status & STRBUF_OVERFLOW)
-		return -E2BIG;
-
-	strncpy(desc, (char *)buf->data, size - 1);
-	desc[size - 1] = '\0';
+	props->valid = true;
 	return 0;
 }
 
@@ -157,16 +131,14 @@ static int iommu_get_group(struct udev *udev,
 		return -E2BIG;
 
 	pci_dev = &target->devices[target->device_count];
-	ret = udev_read_pci_addr(dev, &pci_dev->addr);
+	ret = pci_dev_read_addr(udev_device_get_sysname(dev), &pci_dev->addr);
 	if (ret)
 		return ret;
 
-	target->device_count++;
+	if (iommu_read_pci_props(dev, &pci_dev->props) != 0)
+		pci_dev->props.valid = false;
 
-	if (iommu_devices_read_description(dev, pci_dev->description,
-					  PCI_DESCRIPTION_SIZE) != 0)
-		memcpy(pci_dev->description, PCI_NO_DESCRIPTION,
-		       sizeof(PCI_NO_DESCRIPTION));
+	target->device_count++;
 
 	return 0;
 }
@@ -176,7 +148,6 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 	struct udev_list_entry *devices;
 	struct udev_list_entry *dev_list_entry;
 	size_t groups_cnt = 0;
-	size_t i;
 	int ret;
 
 	down(down_udev) struct udev *udev = udev_new();
@@ -184,7 +155,7 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		return -ENOMEM;
 
 	down(down_udev_enumerate)
-		struct udev_enumerate *enumerate = udev_enumerate_new(udev);
+	struct udev_enumerate *enumerate = udev_enumerate_new(udev);
 	if (!enumerate)
 		return -ENOMEM;
 
@@ -200,32 +171,9 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 			return ret;
 	}
 
-	for (i = 0; i < groups_cnt; i++) {
-		if (groups[i].device_count > 1) {
-			down(down_malloc) struct pci_device *scratch = malloc(
-				groups[i].device_count * sizeof(*scratch));
-			if (!scratch)
-				return -ENOMEM;
-
-			/* Sort PCI devices. */
-			radix_sort(groups[i].devices, scratch,
-				   groups[i].device_count,
-				   sizeof(struct pci_device),
-				   offsetof(struct pci_device, addr));
-		}
-	}
-
-	if (groups_cnt > 1) {
-		down(down_malloc) struct iommu_group *scratch =
-			malloc(groups_cnt * sizeof(struct iommu_group));
-		if (!scratch)
-			return -ENOMEM;
-
-		/* Sort IOMMU groups. */
-		radix_sort(groups, scratch, groups_cnt,
-			   sizeof(struct iommu_group),
-			   offsetof(struct iommu_group, id));
-	}
+	ret = iommu_groups_sort(groups, groups_cnt);
+	if (ret != 0)
+		return ret;
 
 	return groups_cnt;
 }

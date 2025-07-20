@@ -1,13 +1,12 @@
 BUILD_DIR := build
+DISCOVERY ?= udev
 
 .PHONY: all test install clean
 
 all: $(BUILD_DIR)/lsiommu
 
 $(BUILD_DIR)/lsiommu:
-	@if [ ! -d "$(BUILD_DIR)" ]; then	\
-		meson setup --buildtype debug $(BUILD_DIR);	\
-	fi
+	@meson setup --buildtype debug $(BUILD_DIR) -Ddiscovery=$(DISCOVERY)
 	@meson compile -C $(BUILD_DIR)
 
 test: all

@@ -6,7 +6,7 @@
 #ifndef DOWN_H
 #define DOWN_H
 
-#include <libudev.h>
+#include <dirent.h>
 #include <stdlib.h>
 
 struct strbuf;
@@ -15,8 +15,13 @@ struct strbuf;
 
 void down_malloc(void *p);
 void down_strbuf(struct strbuf **buf);
+void down_dir(DIR **dir);
+
+#ifdef CONFIG_LIBUDEV
+#include <libudev.h>
 void down_udev(struct udev **udev);
 void down_udev_device(struct udev_device **dev);
 void down_udev_enumerate(struct udev_enumerate **enumerate);
+#endif /* CONFIG_LIBUDEV */
 
 #endif /* DOWN_H */

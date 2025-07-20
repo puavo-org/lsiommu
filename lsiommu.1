@@ -7,11 +7,11 @@ lsiommu \- list all IOMMU groups
 [\-h|\-\-help]
 .SH DESCRIPTION
 .B lsiommu
-lists all IOMMU groups and their associated PCI devices. It uses the
+lists all IOMMU groups and their associated PCI devices. By default, it uses the
 .BR libudev (3)
-library to discover hardware, query device properties, and determine IOMMU groupings. This method avoids manual scanning of the
+library to discover hardware, query device properties, and determine IOMMU groupings. This can be changed to a manual
 .BR sysfs (5)
-filesystem.
+filesystem scan at compile-time.
 .PP
 Groups are sorted by their numeric ID, and devices within each group are sorted by their PCI address.
 .SH OPTIONS
