@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
  * Copyright(c) Opinsys Oy 2025
+ *
+ * Based on https://www.cubic.org/docs/radix.htm.
  */
 
 #include <stdint.h>
