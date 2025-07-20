@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 		arg_print_syntax(stdout, argtable, "\n");
 		printf("Lists IOMMU groups and their associated PCI devices.\n");
 		printf("This version was compiled for %s discovery.\n\n",
-		       QUOTE(DISCOVERY_METHOD));
+		       QUOTE(CONFIG_DISCOVERY));
 		arg_print_glossary(stdout, argtable, "  %-25s %s\n");
 		goto out;
 	}

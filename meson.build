@@ -41,7 +41,7 @@ else
   error('Unsupported discovery method')
 endif
 
-extra_cflags += '-DDISCOVERY_METHOD=' + discovery
+extra_cflags += '-DCONFIG_DISCOVERY=' + discovery
 
 deps = [
   dependency('argtable2'),
