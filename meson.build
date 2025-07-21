@@ -45,6 +45,7 @@ extra_cflags += '-DCONFIG_DISCOVERY=' + discovery
 
 deps = [
   dependency('argtable2'),
+  dependency('libcjson'),
 ]
 
 exe = executable(
