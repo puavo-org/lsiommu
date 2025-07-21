@@ -23,7 +23,7 @@ struct pci_dev {
 	bool has_revision;
 };
 
-int pci_dev_read_addr(const char *sysname, uint32_t *addr);
+int pci_dev_string_to_addr(const char *sysname, uint32_t *addr);
 void pci_dev_addr_to_string(uint32_t addr, char *out, size_t size);
 void pci_dev_to_strbuf(struct pci_dev *dev, struct strbuf *out);
 

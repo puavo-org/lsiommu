@@ -29,7 +29,7 @@ static int iommu_read_pci_dev(const char *dev_path, struct pci_dev *pci_dev)
 
 	bdf = basename((char *)dev_path);
 
-	ret = pci_dev_read_addr(bdf, &pci_dev->addr);
+	ret = pci_dev_string_to_addr(bdf, &pci_dev->addr);
 	if (ret)
 		return ret;
 

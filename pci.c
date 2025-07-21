@@ -44,7 +44,7 @@ static int parse_hex(const char *src, int len, uint32_t *value)
 	return 0;
 }
 
-int pci_dev_read_addr(const char *sysname, uint32_t *addr)
+int pci_dev_string_to_addr(const char *sysname, uint32_t *addr)
 {
 	unsigned int domain = 0, bus, slot, func;
 	size_t len;

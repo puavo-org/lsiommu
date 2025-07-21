@@ -64,7 +64,7 @@ static int iommu_read_pci_dev(struct udev_device *dev, struct pci_dev *pci_dev)
 	if (!sysname)
 		return -EINVAL;
 
-	ret = pci_dev_read_addr(sysname, &pci_dev->addr);
+	ret = pci_dev_string_to_addr(sysname, &pci_dev->addr);
 	if (ret)
 		return ret;
 
