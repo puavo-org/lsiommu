@@ -61,15 +61,19 @@ static int iommu_read_pci_props(struct udev_device *dev, struct pci_dev_props *p
 	const char *bdf;
 
 	bdf = udev_device_get_sysname(dev);
+	if (!bdf)
+		return -ENOENT;
+
+	strncpy(props->bdf, bdf, sizeof(props->bdf) - 1);
+
 	vendor = udev_device_get_sysattr_value(dev, "vendor");
 	device = udev_device_get_sysattr_value(dev, "device");
 	class = udev_device_get_sysattr_value(dev, "class");
 	revision = udev_device_get_sysattr_value(dev, "revision");
 
-	if (!bdf || !vendor || !device || !class)
+	if (!vendor || !device || !class)
 		return -ENOENT;
 
-	strncpy(props->bdf, bdf, sizeof(props->bdf) - 1);
 	strncpy(props->vendor, vendor, sizeof(props->vendor) - 1);
 	strncpy(props->device, device, sizeof(props->device) - 1);
 	strncpy(props->class, class, sizeof(props->class) - 1);

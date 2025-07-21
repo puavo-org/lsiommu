@@ -31,6 +31,7 @@ static int pci_dev_read_sysfs_props(const char *dev_path, struct pci_dev_props *
 		return -ENOMEM;
 
 	bdf = basename((char *)dev_path);
+	strncpy(props->bdf, bdf, sizeof(props->bdf) - 1);
 
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/vendor");
@@ -61,8 +62,6 @@ static int pci_dev_read_sysfs_props(const char *dev_path, struct pci_dev_props *
 	props->has_revision =
 		sysfs_read_file((const char *)buf->data, props->revision,
 				sizeof(props->revision)) >= 0;
-
-	strncpy(props->bdf, bdf, sizeof(props->bdf) - 1);
 
 	props->valid = true;
 	return 0;

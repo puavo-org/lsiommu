@@ -76,7 +76,8 @@ int main(int argc, char **argv)
 				printf("Group %03d %s\n", groups[i].id,
 				       (char *)buf->data);
 			} else {
-				printf("Group %03d N/A\n", groups[i].id);
+				printf("Group %03d %s N/A\n",
+				       groups[i].id, pci_dev->props.bdf);
 			}
 
 			strbuf_clear(buf);
