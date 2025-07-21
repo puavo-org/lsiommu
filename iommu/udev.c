@@ -53,7 +53,8 @@ static int iommu_group_id(struct udev_device *dev)
 	return (int)id;
 }
 
-static int iommu_read_pci_dev(struct udev_device *dev, struct pci_dev *pci_dev)
+static int iommu_read_pci_device(struct udev_device *dev,
+				 struct pci_device *pci_dev)
 {
 	const char *revision, *vendor, *device, *class, *sysname;
 	int ret;
@@ -64,7 +65,7 @@ static int iommu_read_pci_dev(struct udev_device *dev, struct pci_dev *pci_dev)
 	if (!sysname)
 		return -EINVAL;
 
-	ret = pci_dev_string_to_addr(sysname, &pci_dev->addr);
+	ret = pci_string_to_addr(sysname, &pci_dev->addr);
 	if (ret)
 		return ret;
 
@@ -97,7 +98,7 @@ static int iommu_get_group(struct udev *udev,
 			   struct iommu_group *groups, size_t *groups_cnt,
 			   size_t groups_size)
 {
-	struct pci_dev *pci_dev;
+	struct pci_device *pci_dev;
 	struct iommu_group *target;
 	const char *path;
 	int group_id;
@@ -133,11 +134,11 @@ static int iommu_get_group(struct udev *udev,
 		(*groups_cnt)++;
 	}
 
-	if (target->device_count >= IOMMU_MAX_DEVICES_PER_GROUP)
+	if (target->device_count >= IOMMU_GROUP_NR_DEVICES)
 		return -E2BIG;
 
 	pci_dev = &target->devices[target->device_count];
-	ret = iommu_read_pci_dev(dev, pci_dev);
+	ret = iommu_read_pci_device(dev, pci_dev);
 	if (ret < 0)
 		return 0;
 

@@ -9,22 +9,22 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define PCI_PROP_SIZE 16
+#define PCI_PROPERTY_SIZE 16
 
 struct strbuf;
 
-struct pci_dev {
+struct pci_device {
 	uint32_t addr;
 	bool valid;
-	char class[PCI_PROP_SIZE];
-	char vendor[PCI_PROP_SIZE];
-	char device[PCI_PROP_SIZE];
-	char revision[PCI_PROP_SIZE];
+	char class[PCI_PROPERTY_SIZE];
+	char vendor[PCI_PROPERTY_SIZE];
+	char device[PCI_PROPERTY_SIZE];
+	char revision[PCI_PROPERTY_SIZE];
 	bool has_revision;
 };
 
-int pci_dev_string_to_addr(const char *sysname, uint32_t *addr);
-void pci_dev_addr_to_string(uint32_t addr, char *out, size_t size);
-void pci_dev_to_strbuf(struct pci_dev *dev, struct strbuf *out);
+int pci_string_to_addr(const char *sysname, uint32_t *addr);
+void pci_addr_to_string(uint32_t addr, char *out, size_t size);
+void pci_to_strbuf(struct pci_device *dev, struct strbuf *out);
 
 #endif /* PCI_H */

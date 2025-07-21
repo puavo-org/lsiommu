@@ -21,7 +21,7 @@ int iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt)
 		if (groups[i].device_count > 1) {
 			size_t count = groups[i].device_count;
 
-			down(down_malloc) struct pci_dev **dev_ptrs =
+			down(down_malloc) struct pci_device **dev_ptrs =
 				malloc(count * sizeof(*dev_ptrs));
 			if (!dev_ptrs)
 				return -ENOMEM;
@@ -29,7 +29,7 @@ int iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt)
 			for (j = 0; j < count; j++)
 				dev_ptrs[j] = &groups[i].devices[j];
 
-			down(down_malloc) struct pci_dev **scratch =
+			down(down_malloc) struct pci_device **scratch =
 				malloc(count * sizeof(*scratch));
 			if (!scratch)
 				return -ENOMEM;
@@ -37,7 +37,7 @@ int iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt)
 			/* Sort PCI devices. */
 			radix_sort((uint32_t **)dev_ptrs, (uint32_t **)scratch, count);
 
-			down(down_malloc) struct pci_dev *sorted =
+			down(down_malloc) struct pci_device *sorted =
 				malloc(count * sizeof(*sorted));
 			if (!sorted)
 				return -ENOMEM;
@@ -45,7 +45,8 @@ int iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt)
 			for (j = 0; j < count; j++)
 				sorted[j] = *dev_ptrs[j];
 
-			memcpy(groups[i].devices, sorted, count * sizeof(struct pci_dev));
+			memcpy(groups[i].devices, sorted,
+			       count * sizeof(struct pci_device));
 		}
 	}
 

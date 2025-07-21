@@ -11,11 +11,11 @@
 
 #include "pci.h"
 
-#define IOMMU_MAX_DEVICES_PER_GROUP 32
+#define IOMMU_GROUP_NR_DEVICES 32
 
 struct iommu_group {
 	int id;
-	struct pci_dev devices[IOMMU_MAX_DEVICES_PER_GROUP];
+	struct pci_device devices[IOMMU_GROUP_NR_DEVICES];
 	size_t device_count;
 };
 

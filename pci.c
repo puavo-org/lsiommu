@@ -44,7 +44,7 @@ static int parse_hex(const char *src, int len, uint32_t *value)
 	return 0;
 }
 
-int pci_dev_string_to_addr(const char *sysname, uint32_t *addr)
+int pci_string_to_addr(const char *sysname, uint32_t *addr)
 {
 	unsigned int domain = 0, bus, slot, func;
 	size_t len;
@@ -74,7 +74,7 @@ int pci_dev_string_to_addr(const char *sysname, uint32_t *addr)
 	return 0;
 }
 
-void pci_dev_addr_to_string(uint32_t addr, char *out, size_t size)
+void pci_addr_to_string(uint32_t addr, char *out, size_t size)
 {
 	unsigned int domain = (addr >> 16) & 0xffff;
 	unsigned int bus = (addr >> 8) & 0xff;
@@ -84,11 +84,11 @@ void pci_dev_addr_to_string(uint32_t addr, char *out, size_t size)
 	snprintf(out, size, "%04x:%02x:%02x.%d", domain, bus, slot, func);
 }
 
-void pci_dev_to_strbuf(struct pci_dev *props, struct strbuf *out)
+void pci_to_strbuf(struct pci_device *props, struct strbuf *out)
 {
 	char addr_str[32];
 
-	pci_dev_addr_to_string(props->addr, addr_str, sizeof(addr_str));
+	pci_addr_to_string(props->addr, addr_str, sizeof(addr_str));
 
 	strbuf_append(out, "Address ");
 	strbuf_append(out, addr_str);

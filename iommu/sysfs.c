@@ -20,16 +20,16 @@
 #include "strbuf.h"
 #include "sysfs.h"
 
-static int iommu_read_pci_dev(const char *dev_path, struct pci_dev *pci_dev)
+static int iommu_read_pci_device(const char *dev_path, struct pci_device *dev)
 {
 	const char *bdf;
 	ssize_t ret;
 
-	pci_dev->valid = false;
+	dev->valid = false;
 
 	bdf = basename((char *)dev_path);
 
-	ret = pci_dev_string_to_addr(bdf, &pci_dev->addr);
+	ret = pci_string_to_addr(bdf, &dev->addr);
 	if (ret)
 		return ret;
 
@@ -39,35 +39,35 @@ static int iommu_read_pci_dev(const char *dev_path, struct pci_dev *pci_dev)
 
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/vendor");
-	ret = sysfs_read_file((const char *)buf->data, pci_dev->vendor,
-			      sizeof(pci_dev->vendor));
+	ret = sysfs_read_file((const char *)buf->data, dev->vendor,
+			      sizeof(dev->vendor));
 	if (ret < 0)
 		return 0;
 
 	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/device");
-	ret = sysfs_read_file((const char *)buf->data, pci_dev->device,
-			      sizeof(pci_dev->device));
+	ret = sysfs_read_file((const char *)buf->data, dev->device,
+			      sizeof(dev->device));
 	if (ret < 0)
 		return 0;
 
 	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/class");
-	ret = sysfs_read_file((const char *)buf->data, pci_dev->class,
-			      sizeof(pci_dev->class));
+	ret = sysfs_read_file((const char *)buf->data, dev->class,
+			      sizeof(dev->class));
 	if (ret < 0)
 		return 0;
 
 	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/revision");
-	pci_dev->has_revision =
+	dev->has_revision =
 		sysfs_read_file((const char *)buf->data, pci_dev->revision,
-				sizeof(pci_dev->revision)) >= 0;
+				sizeof(dev->revision)) >= 0;
 
-	pci_dev->valid = true;
+	dev->valid = true;
 	return 0;
 }
 
@@ -136,7 +136,7 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 			groups_cnt++;
 		}
 
-		if (target->device_count >= IOMMU_MAX_DEVICES_PER_GROUP)
+		if (target->device_count >= IOMMU_GROUP_NR_DEVICES)
 			return -E2BIG;
 
 		pci_dev = &target->devices[target->device_count];
@@ -149,7 +149,7 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		if (buf->status & STRBUF_OVERFLOW)
 			return -ENOMEM;
 
-		ret = iommu_read_pci_dev((const char *)buf->data, pci_dev);
+		ret = iommu_read_pci_device((const char *)buf->data, pci_dev);
 		if (ret < 0)
 			continue;
 

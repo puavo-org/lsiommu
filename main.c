@@ -30,15 +30,15 @@ static int print_plain(struct iommu_group *groups, size_t nr_groups)
 
 	for (i = 0; i < nr_groups; i++) {
 		for (j = 0; j < groups[i].device_count; j++) {
-			struct pci_dev *pci_dev = &groups[i].devices[j];
+			struct pci_device *dev = &groups[i].devices[j];
 			char addr_str[32];
 
-			if (pci_dev->valid) {
-				pci_dev_to_strbuf(pci_dev, buf);
+			if (dev->valid) {
+				pci_to_strbuf(dev, buf);
 				printf("Group %03d %s\n", groups[i].id,
 				       (char *)buf->data);
 			} else {
-				pci_dev_addr_to_string(pci_dev->addr, addr_str,
+				pci_addr_to_string(dev->addr, addr_str,
 						       sizeof(addr_str));
 				printf("Group %03d %s N/A\n", groups[i].id,
 				       addr_str);
@@ -71,30 +71,30 @@ static int print_json(struct iommu_group *groups, size_t nr_groups)
 		devices_array = cJSON_AddArrayToObject(group_obj, "devices");
 
 		for (j = 0; j < groups[i].device_count; j++) {
-			struct pci_dev *pci_dev = &groups[i].devices[j];
+			struct pci_device *dev = &groups[i].devices[j];
 			cJSON *device_obj = cJSON_CreateObject();
 			char addr_str[32];
 
-			pci_dev_addr_to_string(pci_dev->addr, addr_str,
+			pci_addr_to_string(dev->addr, addr_str,
 					       sizeof(addr_str));
 
 			cJSON_AddStringToObject(device_obj, "address",
 						addr_str);
 
-			if (pci_dev->valid) {
+			if (dev->valid) {
 				cJSON_AddStringToObject(
 					device_obj, "class",
-					pci_dev->class + 2);
+					dev->class + 2);
 				cJSON_AddStringToObject(
 					device_obj, "vendor",
-					pci_dev->vendor + 2);
+					dev->vendor + 2);
 				cJSON_AddStringToObject(
 					device_obj, "device",
-					pci_dev->device + 2);
-				if (pci_dev->has_revision) {
+					dev->device + 2);
+				if (dev->has_revision) {
 					cJSON_AddStringToObject(
 						device_obj, "revision",
-						pci_dev->revision + 2);
+						dev->revision + 2);
 				}
 			}
 			cJSON_AddItemToArray(devices_array, device_obj);
