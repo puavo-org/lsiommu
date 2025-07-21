@@ -80,8 +80,6 @@ static int print_json(struct iommu_group *groups, size_t nr_groups)
 
 			cJSON_AddStringToObject(device_obj, "address",
 						addr_str);
-			cJSON_AddBoolToObject(device_obj, "valid",
-					      pci_dev->valid);
 
 			if (pci_dev->valid) {
 				cJSON_AddStringToObject(
