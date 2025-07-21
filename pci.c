@@ -90,22 +90,17 @@ void pci_dev_to_strbuf(struct pci_dev *props, struct strbuf *out)
 
 	pci_dev_addr_to_string(props->addr, addr_str, sizeof(addr_str));
 
+	strbuf_append(out, "Address ");
 	strbuf_append(out, addr_str);
 	strbuf_append(out, " Class ");
 	strbuf_append(out, props->class + 2);
-	strbuf_append(out, ": Vendor ");
-	strbuf_append(out, props->vendor + 2);
-	strbuf_append(out, " Device ");
-	strbuf_append(out, props->device + 2);
-	strbuf_append(out, " [");
+	strbuf_append(out, " ID ");
 	strbuf_append(out, props->vendor + 2);
 	strbuf_append(out, ":");
 	strbuf_append(out, props->device + 2);
-	strbuf_append(out, "]");
 
 	if (props->has_revision) {
-		strbuf_append(out, " (rev ");
+		strbuf_append(out, " Revision ");
 		strbuf_append(out, props->revision + 2);
-		strbuf_append(out, ")");
 	}
 }
