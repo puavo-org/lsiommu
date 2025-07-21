@@ -16,54 +16,58 @@
 
 #include "down.h"
 #include "iommu.h"
+#include "pci.h"
 #include "strbuf.h"
 #include "sysfs.h"
 
-static int pci_dev_read_sysfs_props(const char *dev_path, struct pci_dev_props *props)
+static int iommu_read_pci_dev(const char *dev_path, struct pci_dev *pci_dev)
 {
 	const char *bdf;
 	ssize_t ret;
 
-	props->valid = false;
+	pci_dev->valid = false;
+
+	bdf = basename((char *)dev_path);
+
+	ret = pci_dev_read_addr(bdf, &pci_dev->addr);
+	if (ret)
+		return ret;
 
 	down(down_strbuf) struct strbuf *buf = strbuf_alloc(PATH_MAX);
 	if (!buf)
 		return -ENOMEM;
 
-	bdf = basename((char *)dev_path);
-	strncpy(props->bdf, bdf, sizeof(props->bdf) - 1);
-
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/vendor");
-	ret = sysfs_read_file((const char *)buf->data, props->vendor,
-			      sizeof(props->vendor));
+	ret = sysfs_read_file((const char *)buf->data, pci_dev->vendor,
+			      sizeof(pci_dev->vendor));
 	if (ret < 0)
-		return ret;
+		return 0;
 
 	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/device");
-	ret = sysfs_read_file((const char *)buf->data, props->device,
-			      sizeof(props->device));
+	ret = sysfs_read_file((const char *)buf->data, pci_dev->device,
+			      sizeof(pci_dev->device));
 	if (ret < 0)
-		return ret;
+		return 0;
 
 	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/class");
-	ret = sysfs_read_file((const char *)buf->data, props->class,
-			      sizeof(props->class));
+	ret = sysfs_read_file((const char *)buf->data, pci_dev->class,
+			      sizeof(pci_dev->class));
 	if (ret < 0)
-		return ret;
+		return 0;
 
 	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/revision");
-	props->has_revision =
-		sysfs_read_file((const char *)buf->data, props->revision,
-				sizeof(props->revision)) >= 0;
+	pci_dev->has_revision =
+		sysfs_read_file((const char *)buf->data, pci_dev->revision,
+				sizeof(pci_dev->revision)) >= 0;
 
-	props->valid = true;
+	pci_dev->valid = true;
 	return 0;
 }
 
@@ -84,7 +88,7 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		return -errno;
 
 	while ((entry = readdir(dir)) != NULL) {
-		struct pci_device *pci_dev;
+		struct pci_dev *pci_dev;
 		struct iommu_group *target;
 		char *endptr;
 		ssize_t len;
@@ -136,9 +140,6 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 			return -E2BIG;
 
 		pci_dev = &target->devices[target->device_count];
-		ret = pci_dev_read_addr(entry->d_name, &pci_dev->addr);
-		if (ret)
-			continue;
 
 		strbuf_clear(buf);
 		strbuf_append(buf, pci_devices_path);
@@ -148,9 +149,9 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		if (buf->status & STRBUF_OVERFLOW)
 			return -ENOMEM;
 
-		ret = pci_dev_read_sysfs_props((const char *)buf->data, &pci_dev->props);
-		if (ret)
-			pci_dev->props.valid = false;
+		ret = iommu_read_pci_dev((const char *)buf->data, pci_dev);
+		if (ret < 0)
+			continue;
 
 		target->device_count++;
 	}

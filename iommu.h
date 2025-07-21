@@ -15,7 +15,7 @@
 
 struct iommu_group {
 	int id;
-	struct pci_device devices[IOMMU_MAX_DEVICES_PER_GROUP];
+	struct pci_dev devices[IOMMU_MAX_DEVICES_PER_GROUP];
 	size_t device_count;
 };
 

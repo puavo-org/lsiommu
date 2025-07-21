@@ -6,6 +6,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "pci.h"
@@ -73,11 +74,23 @@ int pci_dev_read_addr(const char *sysname, uint32_t *addr)
 	return 0;
 }
 
-void pci_dev_read_prop_string(struct pci_device *pci_dev, struct strbuf *out)
+void pci_dev_addr_to_string(uint32_t addr, char *out, size_t size)
 {
-	struct pci_dev_props *props = &pci_dev->props;
+	unsigned int domain = (addr >> 16) & 0xffff;
+	unsigned int bus = (addr >> 8) & 0xff;
+	unsigned int slot = (addr >> 3) & 0x1f;
+	unsigned int func = addr & 0x7;
 
-	strbuf_append(out, props->bdf);
+	snprintf(out, size, "%04x:%02x:%02x.%d", domain, bus, slot, func);
+}
+
+void pci_dev_to_strbuf(struct pci_dev *props, struct strbuf *out)
+{
+	char addr_str[32];
+
+	pci_dev_addr_to_string(props->addr, addr_str, sizeof(addr_str));
+
+	strbuf_append(out, addr_str);
 	strbuf_append(out, " Class ");
 	strbuf_append(out, props->class + 2);
 	strbuf_append(out, ": Vendor ");

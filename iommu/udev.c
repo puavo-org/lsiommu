@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include "down.h"
 #include "iommu.h"
+#include "pci.h"
 #include "strbuf.h"
 
 static int iommu_group_id(struct udev_device *dev)
@@ -52,19 +53,20 @@ static int iommu_group_id(struct udev_device *dev)
 	return (int)id;
 }
 
-static int iommu_read_pci_props(struct udev_device *dev, struct pci_dev_props *props)
+static int iommu_read_pci_dev(struct udev_device *dev, struct pci_dev *pci_dev)
 {
-	const char *revision;
-	const char *vendor;
-	const char *device;
-	const char *class;
-	const char *bdf;
+	const char *revision, *vendor, *device, *class, *sysname;
+	int ret;
 
-	bdf = udev_device_get_sysname(dev);
-	if (!bdf)
-		return -ENOENT;
+	pci_dev->valid = false;
 
-	strncpy(props->bdf, bdf, sizeof(props->bdf) - 1);
+	sysname = udev_device_get_sysname(dev);
+	if (!sysname)
+		return -EINVAL;
+
+	ret = pci_dev_read_addr(sysname, &pci_dev->addr);
+	if (ret)
+		return ret;
 
 	vendor = udev_device_get_sysattr_value(dev, "vendor");
 	device = udev_device_get_sysattr_value(dev, "device");
@@ -72,21 +74,21 @@ static int iommu_read_pci_props(struct udev_device *dev, struct pci_dev_props *p
 	revision = udev_device_get_sysattr_value(dev, "revision");
 
 	if (!vendor || !device || !class)
-		return -ENOENT;
+		return 0;
 
-	strncpy(props->vendor, vendor, sizeof(props->vendor) - 1);
-	strncpy(props->device, device, sizeof(props->device) - 1);
-	strncpy(props->class, class, sizeof(props->class) - 1);
+	strncpy(pci_dev->vendor, vendor, sizeof(pci_dev->vendor) - 1);
+	strncpy(pci_dev->device, device, sizeof(pci_dev->device) - 1);
+	strncpy(pci_dev->class, class, sizeof(pci_dev->class) - 1);
 
 	if (revision) {
-		props->has_revision = true;
-		strncpy(props->revision, revision,
-			sizeof(props->revision) - 1);
+		pci_dev->has_revision = true;
+		strncpy(pci_dev->revision, revision,
+			sizeof(pci_dev->revision) - 1);
 	} else {
-		props->has_revision = false;
+		pci_dev->has_revision = false;
 	}
 
-	props->valid = true;
+	pci_dev->valid = true;
 	return 0;
 }
 
@@ -95,7 +97,7 @@ static int iommu_get_group(struct udev *udev,
 			   struct iommu_group *groups, size_t *groups_cnt,
 			   size_t groups_size)
 {
-	struct pci_device *pci_dev;
+	struct pci_dev *pci_dev;
 	struct iommu_group *target;
 	const char *path;
 	int group_id;
@@ -135,12 +137,9 @@ static int iommu_get_group(struct udev *udev,
 		return -E2BIG;
 
 	pci_dev = &target->devices[target->device_count];
-	ret = pci_dev_read_addr(udev_device_get_sysname(dev), &pci_dev->addr);
-	if (ret)
-		return ret;
-
-	if (iommu_read_pci_props(dev, &pci_dev->props) != 0)
-		pci_dev->props.valid = false;
+	ret = iommu_read_pci_dev(dev, pci_dev);
+	if (ret < 0)
+		return 0;
 
 	target->device_count++;
 

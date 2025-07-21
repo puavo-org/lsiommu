@@ -11,6 +11,7 @@
 
 #include "down.h"
 #include "iommu.h"
+#include "pci.h"
 #include "strbuf.h"
 
 #define _QUOTE(str) #str
@@ -26,6 +27,7 @@ int main(int argc, char **argv)
 	void *argtable[] = {help, end};
 	ssize_t nr_groups = 0;
 	bool has_arg_errors;
+	char addr_str[32];
 	size_t i, j;
 	(void)argc;
 
@@ -69,15 +71,17 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < (size_t)nr_groups; i++) {
 		for (j = 0; j < groups[i].device_count; j++) {
-			struct pci_device *pci_dev = &groups[i].devices[j];
+			struct pci_dev *pci_dev = &groups[i].devices[j];
 
-			if (pci_dev->props.valid) {
-				pci_dev_read_prop_string(pci_dev, buf);
+			if (pci_dev->valid) {
+				pci_dev_to_strbuf(pci_dev, buf);
 				printf("Group %03d %s\n", groups[i].id,
 				       (char *)buf->data);
 			} else {
+				pci_dev_addr_to_string(pci_dev->addr, addr_str,
+						       sizeof(addr_str));
 				printf("Group %03d %s N/A\n",
-				       groups[i].id, pci_dev->props.bdf);
+				       groups[i].id, addr_str);
 			}
 
 			strbuf_clear(buf);

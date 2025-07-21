@@ -13,9 +13,9 @@
 
 struct strbuf;
 
-struct pci_dev_props {
+struct pci_dev {
+	uint32_t addr;
 	bool valid;
-	char bdf[32];
 	char class[PCI_PROP_SIZE];
 	char vendor[PCI_PROP_SIZE];
 	char device[PCI_PROP_SIZE];
@@ -23,12 +23,8 @@ struct pci_dev_props {
 	bool has_revision;
 };
 
-struct pci_device {
-	uint32_t addr;
-	struct pci_dev_props props;
-};
-
 int pci_dev_read_addr(const char *sysname, uint32_t *addr);
-void pci_dev_read_prop_string(struct pci_device *pci_dev, struct strbuf *out);
+void pci_dev_addr_to_string(uint32_t addr, char *out, size_t size);
+void pci_dev_to_strbuf(struct pci_dev *dev, struct strbuf *out);
 
-#endif
+#endif /* PCI_H */
