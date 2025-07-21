@@ -19,9 +19,12 @@
 #include "strbuf.h"
 #include "sysfs.h"
 
-static int iommu_read_pci_props(const char *dev_path, struct pci_dev_props *props)
+static int pci_dev_read_sysfs_props(const char *dev_path, struct pci_dev_props *props)
 {
 	const char *bdf;
+	ssize_t ret;
+
+	props->valid = false;
 
 	down(down_strbuf) struct strbuf *buf = strbuf_alloc(PATH_MAX);
 	if (!buf)
@@ -31,25 +34,28 @@ static int iommu_read_pci_props(const char *dev_path, struct pci_dev_props *prop
 
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/vendor");
-	if (sysfs_read_file((const char *)buf->data, props->vendor,
-			    sizeof(props->vendor)) < 0)
-		return -errno;
-	strbuf_clear(buf);
+	ret = sysfs_read_file((const char *)buf->data, props->vendor,
+			      sizeof(props->vendor));
+	if (ret < 0)
+		return ret;
 
+	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/device");
-	if (sysfs_read_file((const char *)buf->data, props->device,
-			    sizeof(props->device)) < 0)
-		return -errno;
-	strbuf_clear(buf);
+	ret = sysfs_read_file((const char *)buf->data, props->device,
+			      sizeof(props->device));
+	if (ret < 0)
+		return ret;
 
+	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/class");
-	if (sysfs_read_file((const char *)buf->data, props->class,
-			    sizeof(props->class)) < 0)
-		return -errno;
-	strbuf_clear(buf);
+	ret = sysfs_read_file((const char *)buf->data, props->class,
+			      sizeof(props->class));
+	if (ret < 0)
+		return ret;
 
+	strbuf_clear(buf);
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/revision");
 	props->has_revision =
@@ -75,13 +81,12 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		return -errno;
 
 	down(down_strbuf) struct strbuf *buf = strbuf_alloc(PATH_MAX);
-	if (!dir || !buf)
+	if (!buf)
 		return -errno;
 
 	while ((entry = readdir(dir)) != NULL) {
 		struct pci_device *pci_dev;
 		struct iommu_group *target;
-		const char *dev_path;
 		char *endptr;
 		ssize_t len;
 		long id;
@@ -90,22 +95,19 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		if (entry->d_name[0] == '.')
 			continue;
 
+		strbuf_clear(buf);
 		strbuf_append(buf, pci_devices_path);
 		strbuf_append(buf, "/");
 		strbuf_append(buf, entry->d_name);
-		dev_path = (const char *)buf->data;
-
 		strbuf_append(buf, "/iommu_group");
-		if (buf->status & STRBUF_OVERFLOW) {
-			strbuf_clear(buf);
-			continue;
-		}
+
+		if (buf->status & STRBUF_OVERFLOW)
+			return -ENOMEM;
 
 		len = readlink((const char *)buf->data, target_path,
-			     sizeof(target_path) - 1);
-		strbuf_clear(buf);
+			       sizeof(target_path) - 1);
 		if (len < 0)
-			continue;
+			return len;
 
 		target_path[len] = '\0';
 
@@ -123,37 +125,40 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		}
 
 		if (!target) {
-			if (groups_cnt >= groups_size) {
-				ret = -E2BIG;
-				goto out;
-			}
+			if (groups_cnt >= groups_size)
+				return -E2BIG;
 			target = &groups[groups_cnt];
 			target->id = (int)id;
 			target->device_count = 0;
 			groups_cnt++;
 		}
 
-		if (target->device_count >= IOMMU_MAX_DEVICES_PER_GROUP) {
-			ret = -E2BIG;
-			goto out;
-		}
+		if (target->device_count >= IOMMU_MAX_DEVICES_PER_GROUP)
+			return -E2BIG;
 
 		pci_dev = &target->devices[target->device_count];
-		if (pci_dev_read_addr(entry->d_name, &pci_dev->addr) != 0)
+		ret = pci_dev_read_addr(entry->d_name, &pci_dev->addr);
+		if (ret)
 			continue;
 
-		if (iommu_read_pci_props(dev_path, &pci_dev->props) != 0)
+		strbuf_clear(buf);
+		strbuf_append(buf, pci_devices_path);
+		strbuf_append(buf, "/");
+		strbuf_append(buf, entry->d_name);
+
+		if (buf->status & STRBUF_OVERFLOW)
+			return -ENOMEM;
+
+		ret = pci_dev_read_sysfs_props((const char *)buf->data, &pci_dev->props);
+		if (ret)
 			pci_dev->props.valid = false;
 
 		target->device_count++;
 	}
 
 	ret = iommu_groups_sort(groups, groups_cnt);
-	if (ret != 0)
-		goto out;
+	if (ret)
+		return ret;
 
 	return groups_cnt;
-
-out:
-	return ret;
 }
