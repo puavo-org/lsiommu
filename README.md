@@ -5,9 +5,6 @@ Lists all IOMMU groups and their associated PCI devices.
 ## Dependencies
 
 - argtable2
-- clang (or gcc)
-- libcjson-dev
-- libsystemd
 - libudev
 - make
 - meson

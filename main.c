@@ -4,7 +4,6 @@
  */
 
 #include <argtable2.h>
-#include <cJSON.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +38,7 @@ static int print_plain(struct iommu_group *groups, size_t nr_groups)
 				       (char *)buf->data);
 			} else {
 				pci_addr_to_string(dev->addr, addr_str,
-						       sizeof(addr_str));
+						   sizeof(addr_str));
 				printf("Group %03d %s N/A\n", groups[i].id,
 				       addr_str);
 			}
@@ -53,62 +52,12 @@ static int print_plain(struct iommu_group *groups, size_t nr_groups)
 
 static int print_json(struct iommu_group *groups, size_t nr_groups)
 {
-	cJSON *root = cJSON_CreateObject();
-	cJSON *groups_array = NULL;
-	char *json_string = NULL;
-	size_t i, j;
-
-	if (!root)
+	down(down_strbuf) struct strbuf *json_buf =
+		iommu_to_json(groups, nr_groups);
+	if (!json_buf)
 		return -ENOMEM;
 
-	groups_array = cJSON_AddArrayToObject(root, "iommu_groups");
-
-	for (i = 0; i < nr_groups; i++) {
-		cJSON *group_obj = cJSON_CreateObject();
-		cJSON *devices_array = NULL;
-
-		cJSON_AddNumberToObject(group_obj, "id", groups[i].id);
-		devices_array = cJSON_AddArrayToObject(group_obj, "devices");
-
-		for (j = 0; j < groups[i].device_count; j++) {
-			struct pci_device *dev = &groups[i].devices[j];
-			cJSON *device_obj = cJSON_CreateObject();
-			char addr_str[32];
-
-			pci_addr_to_string(dev->addr, addr_str,
-					       sizeof(addr_str));
-
-			cJSON_AddStringToObject(device_obj, "address",
-						addr_str);
-
-			if (dev->valid) {
-				cJSON_AddStringToObject(
-					device_obj, "class",
-					dev->class + 2);
-				cJSON_AddStringToObject(
-					device_obj, "vendor",
-					dev->vendor + 2);
-				cJSON_AddStringToObject(
-					device_obj, "device",
-					dev->device + 2);
-				if (dev->has_revision) {
-					cJSON_AddStringToObject(
-						device_obj, "revision",
-						dev->revision + 2);
-				}
-			}
-			cJSON_AddItemToArray(devices_array, device_obj);
-		}
-		cJSON_AddItemToArray(groups_array, group_obj);
-	}
-
-	json_string = cJSON_Print(root);
-	if (json_string) {
-		printf("%s\n", json_string);
-		free(json_string);
-	}
-
-	cJSON_Delete(root);
+	printf("%s\n", (char *)json_buf->data);
 	return 0;
 }
 

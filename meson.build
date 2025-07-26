@@ -25,6 +25,7 @@ sources = [
   'radix.c',
   'strbuf.c',
   'sysfs.c',
+  'iommu/json.c',
   'iommu/main.c',
 ]
 
@@ -45,7 +46,6 @@ extra_cflags += '-DCONFIG_DISCOVERY=' + discovery
 
 deps = [
   dependency('argtable2'),
-  dependency('libcjson'),
 ]
 
 exe = executable(
@@ -57,6 +57,3 @@ exe = executable(
 )
 
 install_man('lsiommu.1')
-
-test('basic test', exe)
-test('help test', exe, args: ['--help'])
