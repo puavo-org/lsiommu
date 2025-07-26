@@ -64,7 +64,7 @@ static int iommu_read_pci_device(const char *dev_path, struct pci_device *dev)
 	strbuf_append(buf, dev_path);
 	strbuf_append(buf, "/revision");
 	dev->has_revision =
-		sysfs_read_file((const char *)buf->data, pci_dev->revision,
+		sysfs_read_file((const char *)buf->data, dev->revision,
 				sizeof(dev->revision)) >= 0;
 
 	dev->valid = true;
@@ -88,7 +88,7 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		return -errno;
 
 	while ((entry = readdir(dir)) != NULL) {
-		struct pci_dev *pci_dev;
+		struct pci_device *pci_dev;
 		struct iommu_group *target;
 		char *endptr;
 		ssize_t len;
@@ -113,6 +113,7 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 			return len;
 
 		target_path[len] = '\0';
+		(void)len;
 
 		errno = 0;
 		id = strtol(basename(target_path), &endptr, 10);
