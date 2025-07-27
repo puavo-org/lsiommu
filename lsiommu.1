@@ -4,7 +4,7 @@
 lsiommu \- list all IOMMU groups
 .SH SYNOPSIS
 .B lsiommu
-[\-\-style \fIstyle\fP]
+[\-\-format \fIformat\fP]
 [\-h|\-\-help]
 .SH DESCRIPTION
 .B lsiommu
@@ -17,8 +17,8 @@ filesystem scan at compile-time.
 Groups are sorted by their numeric ID, and devices within each group are sorted by their PCI address.
 .SH OPTIONS
 .TP
-.B \-\-style \fIstyle\fP
-Set the output style. Supported styles are \fBplain\fP (default) and \fBjson\fP.
+.B \-\-format \fIformat\fP
+Set the output format. Supported formats are \fBplain\fP (default) and \fBjson\fP.
 .TP
 .B \-h, \--help
 Print help and exit.

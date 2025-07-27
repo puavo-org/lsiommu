@@ -64,25 +64,25 @@ static int print_json(struct iommu_group *groups, size_t nr_groups)
 
 static void print_usage(const char *name)
 {
-	printf("Usage: %s [-h] [--style <style>]\n", name);
+	printf("Usage: %s [-h] [--format <format>]\n", name);
 	printf("Lists IOMMU groups and their associated PCI devices.\n");
 	printf("This version was compiled for %s discovery.\n\n",
 	       QUOTE(CONFIG_DISCOVERY));
 	printf("  -h, --help          Print help and exit\n");
-	printf("      --style <style> Output style (plain|json), default: plain\n");
+	printf("      --format <format> Output format (plain|json), default: plain\n");
 }
 
 int main(int argc, char **argv)
 {
 	const char *process_name = argv[0];
-	const char *style = "plain";
+	const char *format = "plain";
 	ssize_t nr_groups = 0;
 	int ret;
 	int opt;
 
 	static struct option long_options[] = {
 		{"help",  no_argument,       0, 'h'},
-		{"style", required_argument, 0, 's'},
+		{"format", required_argument, 0, 's'},
 		{0, 0, 0, 0}
 	};
 
@@ -96,15 +96,15 @@ int main(int argc, char **argv)
 			print_usage(process_name);
 			goto out;
 		case 's':
-			style = optarg;
+			format = optarg;
 			break;
 		default:
 			goto err;
 		}
 	}
 
-	if (strcmp(style, "plain") && strcmp(style, "json")) {
-		fprintf(stderr, "error: invalid style '%s'\n", style);
+	if (strcmp(format, "plain") && strcmp(format, "json")) {
+		fprintf(stderr, "error: invalid format '%s'\n", format);
 		goto err;
 	}
 
@@ -121,7 +121,7 @@ int main(int argc, char **argv)
 		goto err;
 	}
 
-	if (strcmp(style, "json") == 0)
+	if (strcmp(format, "json") == 0)
 		ret = print_json(groups, nr_groups);
 	else
 		ret = print_plain(groups, nr_groups);
