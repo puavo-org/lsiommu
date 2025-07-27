@@ -1,21 +1,21 @@
 # lsiommu
 
-Lists all IOMMU groups and their associated PCI devices. 
+A command-line utility for Linux, which lists IOMMU groups and the associated
+PCI devices.
 
 ## Dependencies
 
-- libudev
+- a C11-capable compiler.
 - make
-- meson
-- ninja-build
 - pkg-config
+- libudev but only when built with udev discovery.
 
 ## Building
 
-There are two approaches for doing builds.
+- `make` or `make DISCOVERY=udev` builds a udev backed version.
+- `make DISCOVERY=sysfs` builds a sysfs backed version.
 
-Run `make` in order to create a *development build*. It takes care of
-orchestrating Meson to create a debug build. A sysfs discovery backend,
-instead of udev, can be selected as follows:  `make DISCOVERY=sysfs`.
+## License
 
-Orchestrate `meson` manually in order to create *production builds*.
+This project is licensed under the **GNU General Public License v3.0**. Read
+[LICENSE](LICENSE) for the full license text.
