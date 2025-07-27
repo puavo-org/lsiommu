@@ -1,7 +1,0 @@
-option(
-  'discovery',
-  type: 'combo',
-  choices: ['udev', 'sysfs'],
-  value: 'udev',
-  description: 'The discovery method'
-)
