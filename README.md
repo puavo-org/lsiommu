@@ -4,7 +4,6 @@ Lists all IOMMU groups and their associated PCI devices.
 
 ## Dependencies
 
-- argtable2
 - libudev
 - make
 - meson

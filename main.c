@@ -3,8 +3,9 @@
  * Copyright(c) Opinsys Oy 2025
  */
 
-#include <argtable2.h>
 #include <errno.h>
+#include <getopt.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,43 +62,49 @@ static int print_json(struct iommu_group *groups, size_t nr_groups)
 	return 0;
 }
 
+static void print_usage(const char *name)
+{
+	printf("Usage: %s [-h] [--style <style>]\n", name);
+	printf("Lists IOMMU groups and their associated PCI devices.\n");
+	printf("This version was compiled for %s discovery.\n\n",
+	       QUOTE(CONFIG_DISCOVERY));
+	printf("  -h, --help          Print help and exit\n");
+	printf("      --style <style> Output style (plain|json), default: plain\n");
+}
+
 int main(int argc, char **argv)
 {
-	struct arg_lit *help = arg_lit0("h", "help", "Print help and exit");
-	struct arg_str *style = arg_str0(NULL, "style", "<style>",
-					 "Output style (plain|json)");
 	const char *process_name = argv[0];
-	struct arg_end *end = arg_end(20);
-	void *argtable[] = {help, style, end};
+	const char *style = "plain";
 	ssize_t nr_groups = 0;
-	bool has_arg_errors;
-	(void)argc;
 	int ret;
+	int opt;
 
-	has_arg_errors = arg_parse(argc, argv, argtable) > 0;
+	static struct option long_options[] = {
+		{"help",  no_argument,       0, 'h'},
+		{"style", required_argument, 0, 's'},
+		{0, 0, 0, 0}
+	};
 
-	if (style->count == 0)
-		style->sval[0] = "plain";
+	for (;;) {
+		opt = getopt_long(argc, argv, "hs:", long_options, NULL);
+		if (opt == -1)
+			break;
 
-	if (help->count > 0) {
-		printf("Usage: %s", process_name);
-		arg_print_syntax(stdout, argtable, "\n");
-		printf("Lists IOMMU groups and their associated PCI devices.\n");
-		printf("This version was compiled for %s discovery.\n\n",
-		       QUOTE(CONFIG_DISCOVERY));
-		arg_print_glossary(stdout, argtable, "  %-25s %s\n");
-		goto out;
+		switch (opt) {
+		case 'h':
+			print_usage(process_name);
+			goto out;
+		case 's':
+			style = optarg;
+			break;
+		default:
+			goto err;
+		}
 	}
 
-	if (has_arg_errors) {
-		arg_print_errors(stderr, end, process_name);
-		goto err;
-	}
-
-	if (strcmp(style->sval[0], "plain") &&
-	    strcmp(style->sval[0], "json")) {
-		fprintf(stderr, "error: invalid style '%s'\n",
-			style->sval[0]);
+	if (strcmp(style, "plain") && strcmp(style, "json")) {
+		fprintf(stderr, "error: invalid style '%s'\n", style);
 		goto err;
 	}
 
@@ -114,7 +121,7 @@ int main(int argc, char **argv)
 		goto err;
 	}
 
-	if (strcmp(style->sval[0], "json") == 0)
+	if (strcmp(style, "json") == 0)
 		ret = print_json(groups, nr_groups);
 	else
 		ret = print_plain(groups, nr_groups);
@@ -125,11 +132,9 @@ int main(int argc, char **argv)
 	}
 
 out:
-	arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
 	return 0;
 
 err:
-	arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
 	fprintf(stderr, "Try '%s --help' for more information.\n", process_name);
 	return 1;
 }

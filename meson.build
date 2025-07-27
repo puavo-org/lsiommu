@@ -30,11 +30,11 @@ sources = [
 ]
 
 extra_cflags = []
-optional_deps = []
+deps = []
 discovery = get_option('discovery')
 if discovery == 'udev'
   sources += 'iommu/udev.c'
-  optional_deps += dependency('libudev')
+  deps += dependency('libudev')
   extra_cflags += '-DCONFIG_LIBUDEV'
 elif discovery == 'sysfs'
   sources += 'iommu/sysfs.c'
@@ -44,15 +44,11 @@ endif
 
 extra_cflags += '-DCONFIG_DISCOVERY=' + discovery
 
-deps = [
-  dependency('argtable2'),
-]
-
 exe = executable(
   'lsiommu',
   sources,
   c_args: extra_cflags,
-  dependencies: deps + optional_deps,
+  dependencies: deps + deps,
   install: true,
 )
 
