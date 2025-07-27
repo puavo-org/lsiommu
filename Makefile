@@ -26,14 +26,13 @@ else
 endif
 
 SOURCES += \
-	down.c \
+	heap-sort.c \
 	main.c \
 	pci.c \
-	radix.c \
-	strbuf.c \
+	string-buffer.c \
 	sysfs.c \
 	iommu/json.c \
-	iommu/main.c
+	iommu/sort.c
 
 CFLAGS += -DCONFIG_DISCOVERY='"$(DISCOVERY)"'
 OBJECTS := $(SOURCES:.c=.o)

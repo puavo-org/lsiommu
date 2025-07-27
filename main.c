@@ -10,10 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "down.h"
 #include "iommu.h"
 #include "pci.h"
-#include "strbuf.h"
+#include "string-buffer.h"
 
 #define _QUOTE(str) #str
 #define QUOTE(str) _QUOTE(str)
@@ -23,10 +22,7 @@ static const size_t IOMMU_NR_GROUPS = 256;
 static int print_plain(struct iommu_group *groups, size_t nr_groups)
 {
 	size_t i, j;
-
-	down(down_strbuf) struct strbuf *buf = strbuf_alloc(512);
-	if (!buf)
-		return -ENOMEM;
+	STRING_BUFFER(buf, 512);
 
 	for (i = 0; i < nr_groups; i++) {
 		for (j = 0; j < groups[i].device_count; j++) {
@@ -34,7 +30,7 @@ static int print_plain(struct iommu_group *groups, size_t nr_groups)
 			char addr_str[32];
 
 			if (dev->valid) {
-				pci_to_strbuf(dev, buf);
+				string_buffer_to_pci(buf, dev);
 				printf("Group %03d %s\n", groups[i].id,
 				       (char *)buf->data);
 			} else {
@@ -44,7 +40,7 @@ static int print_plain(struct iommu_group *groups, size_t nr_groups)
 				       addr_str);
 			}
 
-			strbuf_clear(buf);
+			string_buffer_clear(buf);
 		}
 	}
 
@@ -53,8 +49,8 @@ static int print_plain(struct iommu_group *groups, size_t nr_groups)
 
 static int print_json(struct iommu_group *groups, size_t nr_groups)
 {
-	down(down_strbuf) struct strbuf *json_buf =
-		iommu_to_json(groups, nr_groups);
+	const struct string_buffer *json_buf = iommu_to_json(groups, nr_groups);
+
 	if (!json_buf)
 		return -ENOMEM;
 
@@ -68,7 +64,7 @@ static void print_usage(const char *name)
 	printf("Lists IOMMU groups and their associated PCI devices.\n");
 	printf("This version was compiled for %s discovery.\n\n",
 	       QUOTE(CONFIG_DISCOVERY));
-	printf("  -h, --help          Print help and exit\n");
+	printf("  -h, --help            Print help and exit\n");
 	printf("      --format <format> Output format (plain|json), default: plain\n");
 }
 
@@ -76,14 +72,15 @@ int main(int argc, char **argv)
 {
 	const char *process_name = argv[0];
 	const char *format = "plain";
+	struct iommu_group *groups = NULL;
 	ssize_t nr_groups = 0;
 	int ret;
 	int opt;
 
 	static struct option long_options[] = {
-		{"help",  no_argument,       0, 'h'},
-		{"format", required_argument, 0, 's'},
-		{0, 0, 0, 0}
+		{ "help", no_argument, 0, 'h' },
+		{ "format", required_argument, 0, 's' },
+		{ 0, 0, 0, 0 }
 	};
 
 	for (;;) {
@@ -108,8 +105,7 @@ int main(int argc, char **argv)
 		goto err;
 	}
 
-	down(down_malloc) struct iommu_group *groups =
-		calloc(IOMMU_NR_GROUPS, sizeof(struct iommu_group));
+	groups = calloc(IOMMU_NR_GROUPS, sizeof(struct iommu_group));
 	if (!groups) {
 		fprintf(stderr, "no memory\n");
 		goto err;
@@ -132,9 +128,12 @@ int main(int argc, char **argv)
 	}
 
 out:
+	free(groups);
 	return 0;
 
 err:
-	fprintf(stderr, "Try '%s --help' for more information.\n", process_name);
+	fprintf(stderr, "Try '%s --help' for more information.\n",
+		process_name);
+	free(groups);
 	return 1;
 }

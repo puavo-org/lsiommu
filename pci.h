@@ -8,10 +8,11 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #define PCI_PROPERTY_SIZE 16
 
-struct strbuf;
+struct string_buffer;
 
 struct pci_device {
 	uint32_t addr;
@@ -25,6 +26,6 @@ struct pci_device {
 
 int pci_string_to_addr(const char *sysname, uint32_t *addr);
 void pci_addr_to_string(uint32_t addr, char *out, size_t size);
-void pci_to_strbuf(struct pci_device *dev, struct strbuf *out);
+void string_buffer_to_pci(struct string_buffer *out, struct pci_device *dev);
 
 #endif /* PCI_H */

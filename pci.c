@@ -10,7 +10,7 @@
 #include <string.h>
 
 #include "pci.h"
-#include "strbuf.h"
+#include "string-buffer.h"
 
 static int parse_hex_digit(char src, uint32_t *value)
 {
@@ -30,7 +30,8 @@ static int parse_hex(const char *src, int len, uint32_t *value)
 {
 	uint32_t acc = 0;
 	uint32_t digit;
-	int i, ret;
+	int i;
+	int ret;
 
 	for (i = 0; i < len; i++) {
 		ret = parse_hex_digit(src[i], &digit);
@@ -46,7 +47,10 @@ static int parse_hex(const char *src, int len, uint32_t *value)
 
 int pci_string_to_addr(const char *sysname, uint32_t *addr)
 {
-	unsigned int domain = 0, bus, slot, func;
+	unsigned int domain = 0;
+	unsigned int bus = 0;
+	unsigned int slot = 0;
+	unsigned int func = 0;
 	size_t len;
 
 	if (!sysname)
@@ -84,23 +88,23 @@ void pci_addr_to_string(uint32_t addr, char *out, size_t size)
 	snprintf(out, size, "%04x:%02x:%02x.%d", domain, bus, slot, func);
 }
 
-void pci_to_strbuf(struct pci_device *props, struct strbuf *out)
+void string_buffer_to_pci(struct string_buffer *out, struct pci_device *props)
 {
 	char addr_str[32];
 
 	pci_addr_to_string(props->addr, addr_str, sizeof(addr_str));
 
-	strbuf_append(out, "Address ");
-	strbuf_append(out, addr_str);
-	strbuf_append(out, " Class ");
-	strbuf_append(out, props->class + 2);
-	strbuf_append(out, " ID ");
-	strbuf_append(out, props->vendor + 2);
-	strbuf_append(out, ":");
-	strbuf_append(out, props->device + 2);
+	string_buffer_append(out, "Address ");
+	string_buffer_append(out, addr_str);
+	string_buffer_append(out, " Class ");
+	string_buffer_append(out, props->class + 2);
+	string_buffer_append(out, " ID ");
+	string_buffer_append(out, props->vendor + 2);
+	string_buffer_append(out, ":");
+	string_buffer_append(out, props->device + 2);
 
 	if (props->has_revision) {
-		strbuf_append(out, " Revision ");
-		strbuf_append(out, props->revision + 2);
+		string_buffer_append(out, " Revision ");
+		string_buffer_append(out, props->revision + 2);
 	}
 }
