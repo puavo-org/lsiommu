@@ -8,7 +8,7 @@
 
 #include "strbuf.h"
 
-struct strbuf *strbuf_alloc(uint32_t size)
+struct strbuf *strbuf_alloc(uint16_t size)
 {
 	struct strbuf *buf;
 

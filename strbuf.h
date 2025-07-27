@@ -29,7 +29,7 @@ struct strbuf {
 	uint8_t data[];
 };
 
-struct strbuf *strbuf_alloc(uint32_t size);
+struct strbuf *strbuf_alloc(uint16_t size);
 void strbuf_clear(struct strbuf *buf);
 void strbuf_append(struct strbuf *buf, const char *str);
 
