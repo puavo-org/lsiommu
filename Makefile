@@ -30,7 +30,6 @@ SOURCES += \
 	main.c \
 	pci.c \
 	string-buffer.c \
-	sysfs.c \
 	iommu/json.c \
 	iommu/sort.c
 

@@ -6,6 +6,7 @@
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -17,17 +18,46 @@
 #include "iommu.h"
 #include "pci.h"
 #include "string-buffer.h"
-#include "sysfs.h"
+
+static ssize_t sysfs_read_file(const char *path, char *buf, size_t size)
+{
+	int fd = open(path, O_RDONLY);
+	ssize_t len;
+	int errno_tmp;
+
+	if (fd < 0)
+		return -errno;
+
+	len = read(fd, buf, size - 1);
+	errno_tmp = errno;
+	close(fd);
+
+	if (len < 0)
+		return -errno_tmp;
+
+	buf[len] = '\0';
+
+	if (len > 0 && buf[len - 1] == '\n') {
+		buf[len - 1] = '\0';
+		len--;
+	}
+
+	return len;
+}
 
 static int iommu_read_pci_device(const char *dev_path, struct pci_device *dev)
 {
-	const char *bdf;
 	STRING_BUFFER(buf, PATH_MAX);
+	const char *bdf;
 	ssize_t ret;
 
 	dev->valid = false;
 
-	bdf = basename((char *)dev_path);
+	bdf = strrchr(dev_path, '/');
+	if (bdf)
+		bdf++;
+	else
+		bdf = dev_path;
 
 	ret = pci_string_to_addr(bdf, &dev->addr);
 	if (ret)
@@ -35,69 +65,58 @@ static int iommu_read_pci_device(const char *dev_path, struct pci_device *dev)
 
 	string_buffer_append(buf, dev_path);
 	string_buffer_append(buf, "/vendor");
-	ret = sysfs_read_file((const char *)buf->data, dev->vendor,
-			      sizeof(dev->vendor));
-	if (ret < 0) {
-		ret = 0;
-		goto out;
-	}
+	ret = sysfs_read_file((const char *)buf->data, dev->vendor, sizeof(dev->vendor));
+	if (ret < 0)
+		return ret;
 
 	string_buffer_clear(buf);
 	string_buffer_append(buf, dev_path);
 	string_buffer_append(buf, "/device");
-	ret = sysfs_read_file((const char *)buf->data, dev->device,
-			      sizeof(dev->device));
-	if (ret < 0) {
-		ret = 0;
-		goto out;
-	}
+	ret = sysfs_read_file((const char *)buf->data, dev->device, sizeof(dev->device));
+	if (ret < 0)
+		return ret;
 
 	string_buffer_clear(buf);
 	string_buffer_append(buf, dev_path);
 	string_buffer_append(buf, "/class");
-	ret = sysfs_read_file((const char *)buf->data, dev->class,
-			      sizeof(dev->class));
-	if (ret < 0) {
-		ret = 0;
-		goto out;
-	}
+	ret = sysfs_read_file((const char *)buf->data, dev->class, sizeof(dev->class));
+	if (ret < 0)
+		return ret;
 
 	string_buffer_clear(buf);
 	string_buffer_append(buf, dev_path);
 	string_buffer_append(buf, "/revision");
-	dev->has_revision =
-		sysfs_read_file((const char *)buf->data, dev->revision,
-				sizeof(dev->revision)) >= 0;
+	dev->has_revision = sysfs_read_file((const char *)buf->data, dev->revision, sizeof(dev->revision)) >= 0;
 
 	dev->valid = true;
-	ret = 0;
-out:
-	return ret;
+	return 0;
 }
 
 ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 {
 	const char *pci_devices_path = "/sys/bus/pci/devices";
 	STRING_BUFFER(buf, PATH_MAX);
-	struct dirent *entry;
+	struct iommu_group *target;
+	struct pci_device *pci_dev;
 	char target_path[PATH_MAX];
-	DIR *dir = NULL;
-	int ret = 0;
 	size_t groups_cnt = 0;
+	struct dirent *entry;
+	DIR *dir = NULL;
+	char *endptr;
+	ssize_t len;
+	int ret = 0;
+	size_t i;
+	long id;
 
 	dir = opendir(pci_devices_path);
-	if (!dir) {
-		ret = -errno;
-		goto out;
-	}
+	if (!dir)
+		return -errno;
 
-	while ((entry = readdir(dir)) != NULL) {
-		struct pci_device *pci_dev;
-		struct iommu_group *target;
-		char *endptr;
-		ssize_t len;
-		long id;
-		size_t i;
+	errno = 0;
+	for ( ; ; ) {
+		entry = readdir(dir);
+		if (!entry)
+			break;
 
 		if (entry->d_name[0] == '.')
 			continue;
@@ -159,9 +178,13 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		target->device_count++;
 	}
 
+	if (errno) {
+		ret = -errno;
+		closedir(dir);
+		return ret;
+	}
+
 	iommu_groups_sort(groups, groups_cnt);
 	closedir(dir);
-
-out:
-	return ret;
+	return groups_cnt;
 }
