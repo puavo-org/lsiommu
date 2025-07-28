@@ -20,22 +20,27 @@ void string_buffer_clear(struct string_buffer *buf)
 
 void string_buffer_append(struct string_buffer *buf, const char *str)
 {
-	size_t free_capacity;
-	size_t str_len;
+	size_t len, rest;
 
 	if (buf->status & STRING_BUFFER_OVERFLOW)
 		return;
 
-	str_len = strlen(str);
-	free_capacity = buf->capacity - buf->length;
+	len = strlen(str);
 
-	if (str_len >= free_capacity) {
-		memcpy(&buf->data[buf->length], str, free_capacity - 1);
-		buf->length = buf->capacity;
-		buf->data[buf->capacity - 1] = '\0';
-		buf->status |= STRING_BUFFER_OVERFLOW;
-	} else {
-		memcpy(buf->data + buf->length, str, str_len + 1);
-		buf->length += str_len;
+	if (buf->length + len < buf->capacity) {
+		memcpy(buf->data + buf->length, str, len + 1);
+		buf->length += len;
+		return;
 	}
+
+	buf->status |= STRING_BUFFER_OVERFLOW;
+
+	if (buf->capacity > buf->length + 1)
+		rest = buf->capacity - buf->length - 1;
+	else
+		return;
+
+	memcpy(&buf->data[buf->length], str, rest);
+	buf->length += rest;
+	buf->data[buf->length] = '\0';
 }
