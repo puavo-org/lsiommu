@@ -159,14 +159,9 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		target->device_count++;
 	}
 
-	ret = iommu_groups_sort(groups, groups_cnt);
-	if (ret)
-		goto out_close_dir;
-
-	ret = groups_cnt;
-
-out_close_dir:
+	iommu_groups_sort(groups, groups_cnt);
 	closedir(dir);
+
 out:
 	return ret;
 }

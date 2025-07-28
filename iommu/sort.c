@@ -40,7 +40,7 @@ static int iommu_group_cmp(const void *a, const void *b)
 	return 0;
 }
 
-int iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt)
+void iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt)
 {
 	size_t i;
 
@@ -54,6 +54,4 @@ int iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt)
 	if (groups_cnt > 1)
 		heap_sort(groups, groups_cnt, sizeof(struct iommu_group),
 			  iommu_group_cmp);
-
-	return 0;
 }

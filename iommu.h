@@ -21,7 +21,7 @@ struct iommu_group {
 };
 
 ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size);
-int iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt);
+void iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt);
 const struct string_buffer *iommu_to_json(struct iommu_group *groups,
 					  size_t nr_groups);
 
