@@ -19,6 +19,8 @@
 #include "pci.h"
 #include "string-buffer.h"
 
+#define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
+
 static ssize_t sysfs_read_file(const char *path, char *buf, size_t size)
 {
 	int fd = open(path, O_RDONLY);
@@ -100,21 +102,20 @@ static int iommu_read_pci_device(const char *dev_path, struct pci_device *dev)
 bool iommu_groups_read(struct iommu_group *groups, unsigned int *cnt,
 		       unsigned int capacity)
 {
-	const char *pci_devices_path = "/sys/bus/pci/devices";
 	STRING_BUFFER(buf, PATH_MAX);
 	struct iommu_group *target;
 	struct pci_device *pci_dev;
 	char target_path[PATH_MAX];
 	struct dirent *entry;
-	DIR *dir;
+	unsigned int i;
 	char *endptr;
 	ssize_t len;
-	unsigned int i;
+	DIR *dir;
 	long id;
 
 	*cnt = 0;
 
-	dir = opendir(pci_devices_path);
+	dir = opendir(SYSFS_PCI_DEVICES);
 	if (!dir)
 		return false;
 
@@ -128,7 +129,7 @@ bool iommu_groups_read(struct iommu_group *groups, unsigned int *cnt,
 			continue;
 
 		string_buffer_clear(buf);
-		string_buffer_append(buf, pci_devices_path);
+		string_buffer_append(buf, SYSFS_PCI_DEVICES);
 		string_buffer_append(buf, "/");
 		string_buffer_append(buf, entry->d_name);
 		string_buffer_append(buf, "/iommu_group");
@@ -158,7 +159,8 @@ bool iommu_groups_read(struct iommu_group *groups, unsigned int *cnt,
 
 		if (!target) {
 			if (*cnt >= capacity)
-				continue;
+				goto err;
+
 			target = &groups[*cnt];
 			target->group_id = (unsigned int)id;
 			target->nr_devices = 0;
@@ -166,12 +168,12 @@ bool iommu_groups_read(struct iommu_group *groups, unsigned int *cnt,
 		}
 
 		if (target->nr_devices >= IOMMU_GROUP_NR_DEVICES)
-			continue;
+			goto err;
 
 		pci_dev = &target->devices[target->nr_devices];
 
 		string_buffer_clear(buf);
-		string_buffer_append(buf, pci_devices_path);
+		string_buffer_append(buf, SYSFS_PCI_DEVICES);
 		string_buffer_append(buf, "/");
 		string_buffer_append(buf, entry->d_name);
 
@@ -184,12 +186,14 @@ bool iommu_groups_read(struct iommu_group *groups, unsigned int *cnt,
 		target->nr_devices++;
 	}
 
-	if (errno) {
-		closedir(dir);
-		return false;
-	}
+	if (errno)
+		goto err;
 
-	iommu_groups_sort(groups, *cnt);
 	closedir(dir);
+	iommu_groups_sort(groups, *cnt);
 	return true;
+
+err:
+	closedir(dir);
+	return false;
 }
