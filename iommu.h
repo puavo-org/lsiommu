@@ -6,6 +6,7 @@
 #ifndef IOMMU_H
 #define IOMMU_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <sys/types.h>
 
@@ -15,14 +16,15 @@
 #define IOMMU_GROUP_NR_DEVICES 32
 
 struct iommu_group {
-	int id;
+	unsigned int group_id;
+	unsigned int nr_devices;
 	struct pci_device devices[IOMMU_GROUP_NR_DEVICES];
-	size_t device_count;
 };
 
-ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size);
-void iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt);
+bool iommu_groups_read(struct iommu_group *groups, unsigned int *cnt,
+		       unsigned int capacity);
+void iommu_groups_sort(struct iommu_group *groups, unsigned int nr_groups);
 const struct string_buffer *iommu_to_json(struct iommu_group *groups,
-					  size_t nr_groups);
+					  unsigned int nr_groups);
 
 #endif /* IOMMU_H */

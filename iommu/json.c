@@ -63,13 +63,13 @@ static void iommu_json_append_pci(struct string_buffer *buf,
 }
 
 const struct string_buffer *iommu_to_json(struct iommu_group *groups,
-					  size_t nr_groups)
+					  unsigned int nr_groups)
 {
 	struct string_buffer *buf = (struct string_buffer *)iommu_json_buffer;
 	struct iommu_group *group;
 	struct pci_device *dev;
+	unsigned int i, j;
 	char tmp[32];
-	size_t i, j;
 
 	buf->capacity = IOMMU_JSON_BUFFER_SIZE - sizeof(struct string_buffer);
 	string_buffer_clear(buf);
@@ -83,11 +83,11 @@ const struct string_buffer *iommu_to_json(struct iommu_group *groups,
 			string_buffer_append(buf, ",");
 
 		string_buffer_append(buf, "{\"id\":");
-		snprintf(tmp, sizeof(tmp), "%d", group->id);
+		snprintf(tmp, sizeof(tmp), "%u", group->group_id);
 		string_buffer_append(buf, tmp);
 		string_buffer_append(buf, ",\"devices\":[");
 
-		for (j = 0; j < group->device_count; j++) {
+		for (j = 0; j < group->nr_devices; j++) {
 			dev = &group->devices[j];
 
 			if (j > 0)

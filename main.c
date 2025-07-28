@@ -19,25 +19,26 @@
 
 static const size_t IOMMU_NR_GROUPS = 256;
 
-static int print_plain(struct iommu_group *groups, size_t nr_groups)
+static int print_plain(struct iommu_group *groups, unsigned int nr_groups)
 {
-	size_t i, j;
 	STRING_BUFFER(buf, 512);
+	struct pci_device *dev;
+	char addr_str[32];
+	unsigned int i, j;
 
 	for (i = 0; i < nr_groups; i++) {
-		for (j = 0; j < groups[i].device_count; j++) {
-			struct pci_device *dev = &groups[i].devices[j];
-			char addr_str[32];
+		for (j = 0; j < groups[i].nr_devices; j++) {
+			dev = &groups[i].devices[j];
 
 			if (dev->valid) {
 				string_buffer_to_pci(buf, dev);
-				printf("Group %03d %s\n", groups[i].id,
+				printf("Group %03u %s\n", groups[i].group_id,
 				       (char *)buf->data);
 			} else {
 				pci_addr_to_string(dev->addr, addr_str,
 						   sizeof(addr_str));
-				printf("Group %03d %s N/A\n", groups[i].id,
-				       addr_str);
+				printf("Group %03u %s N/A\n",
+				       groups[i].group_id, addr_str);
 			}
 
 			string_buffer_clear(buf);
@@ -47,7 +48,7 @@ static int print_plain(struct iommu_group *groups, size_t nr_groups)
 	return 0;
 }
 
-static int print_json(struct iommu_group *groups, size_t nr_groups)
+static int print_json(struct iommu_group *groups, unsigned int nr_groups)
 {
 	const struct string_buffer *json_buf = iommu_to_json(groups, nr_groups);
 
@@ -71,11 +72,10 @@ static void print_usage(const char *name)
 int main(int argc, char **argv)
 {
 	const char *process_name = argv[0];
-	const char *format = "plain";
 	struct iommu_group *groups = NULL;
-	ssize_t nr_groups = 0;
-	int ret;
-	int opt;
+	const char *format = "plain";
+	unsigned int nr_groups = 0;
+	int ret, opt;
 
 	static struct option long_options[] = {
 		{ "help", no_argument, 0, 'h' },
@@ -111,9 +111,8 @@ int main(int argc, char **argv)
 		goto err;
 	}
 
-	nr_groups = iommu_groups_read(groups, IOMMU_NR_GROUPS);
-	if (nr_groups < 0) {
-		fprintf(stderr, "iommu read error: %s", strerror(-nr_groups));
+	if (!iommu_groups_read(groups, &nr_groups, IOMMU_NR_GROUPS)) {
+		fprintf(stderr, "iommu read error\n");
 		goto err;
 	}
 
@@ -123,7 +122,7 @@ int main(int argc, char **argv)
 		ret = print_plain(groups, nr_groups);
 
 	if (ret) {
-		fprintf(stderr, "print error: %s\n", strerror(ret));
+		fprintf(stderr, "print error: %s\n", strerror(-ret));
 		goto err;
 	}
 

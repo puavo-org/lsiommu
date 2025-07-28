@@ -31,27 +31,32 @@ static int iommu_group_cmp(const void *a, const void *b)
 	const struct iommu_group *group_b = b;
 
 	/* < */
-	if (group_a->id < group_b->id)
+	if (group_a->group_id < group_b->group_id)
 		return -1;
 	/* > */
-	if (group_a->id > group_b->id)
+	if (group_a->group_id > group_b->group_id)
 		return 1;
 	/* == */
 	return 0;
 }
 
-void iommu_groups_sort(struct iommu_group *groups, size_t groups_cnt)
+void iommu_groups_sort(struct iommu_group *groups, unsigned int nr_groups)
 {
-	size_t i;
+	struct pci_device pci_scratch;
+	unsigned int i;
 
 	/* PCI devices */
-	for (i = 0; i < groups_cnt; i++)
-		if (groups[i].device_count > 1)
-			heap_sort(groups[i].devices, groups[i].device_count,
+	for (i = 0; i < nr_groups; i++)
+		if (groups[i].nr_devices > 1)
+			heap_sort(groups[i].devices, &pci_scratch,
+				  groups[i].nr_devices,
 				  sizeof(struct pci_device), pci_device_cmp);
 
 	/* IOMMU groups */
-	if (groups_cnt > 1)
-		heap_sort(groups, groups_cnt, sizeof(struct iommu_group),
-			  iommu_group_cmp);
+	if (nr_groups > 1) {
+		struct iommu_group group_scratch;
+
+		heap_sort(groups, &group_scratch, nr_groups,
+			  sizeof(struct iommu_group), iommu_group_cmp);
+	}
 }

@@ -65,55 +65,61 @@ static int iommu_read_pci_device(const char *dev_path, struct pci_device *dev)
 
 	string_buffer_append(buf, dev_path);
 	string_buffer_append(buf, "/vendor");
-	ret = sysfs_read_file((const char *)buf->data, dev->vendor, sizeof(dev->vendor));
+	ret = sysfs_read_file((const char *)buf->data, dev->vendor,
+			      sizeof(dev->vendor));
 	if (ret < 0)
 		return ret;
 
 	string_buffer_clear(buf);
 	string_buffer_append(buf, dev_path);
 	string_buffer_append(buf, "/device");
-	ret = sysfs_read_file((const char *)buf->data, dev->device, sizeof(dev->device));
+	ret = sysfs_read_file((const char *)buf->data, dev->device,
+			      sizeof(dev->device));
 	if (ret < 0)
 		return ret;
 
 	string_buffer_clear(buf);
 	string_buffer_append(buf, dev_path);
 	string_buffer_append(buf, "/class");
-	ret = sysfs_read_file((const char *)buf->data, dev->class, sizeof(dev->class));
+	ret = sysfs_read_file((const char *)buf->data, dev->class,
+			      sizeof(dev->class));
 	if (ret < 0)
 		return ret;
 
 	string_buffer_clear(buf);
 	string_buffer_append(buf, dev_path);
 	string_buffer_append(buf, "/revision");
-	dev->has_revision = sysfs_read_file((const char *)buf->data, dev->revision, sizeof(dev->revision)) >= 0;
+	dev->has_revision =
+		sysfs_read_file((const char *)buf->data, dev->revision,
+				sizeof(dev->revision)) >= 0;
 
 	dev->valid = true;
 	return 0;
 }
 
-ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
+bool iommu_groups_read(struct iommu_group *groups, unsigned int *cnt,
+		       unsigned int capacity)
 {
 	const char *pci_devices_path = "/sys/bus/pci/devices";
 	STRING_BUFFER(buf, PATH_MAX);
 	struct iommu_group *target;
 	struct pci_device *pci_dev;
 	char target_path[PATH_MAX];
-	size_t groups_cnt = 0;
 	struct dirent *entry;
-	DIR *dir = NULL;
+	DIR *dir;
 	char *endptr;
 	ssize_t len;
-	int ret = 0;
-	size_t i;
+	unsigned int i;
 	long id;
+
+	*cnt = 0;
 
 	dir = opendir(pci_devices_path);
 	if (!dir)
-		return -errno;
+		return false;
 
 	errno = 0;
-	for ( ; ; ) {
+	for (;;) {
 		entry = readdir(dir);
 		if (!entry)
 			break;
@@ -139,30 +145,30 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 
 		errno = 0;
 		id = strtol(basename(target_path), &endptr, 10);
-		if (errno != 0 || *endptr != '\0')
+		if (errno != 0 || *endptr != '\0' || id < 0)
 			continue;
 
 		target = NULL;
-		for (i = 0; i < groups_cnt; i++) {
-			if (groups[i].id == id) {
+		for (i = 0; i < *cnt; i++) {
+			if (groups[i].group_id == id) {
 				target = &groups[i];
 				break;
 			}
 		}
 
 		if (!target) {
-			if (groups_cnt >= groups_size)
+			if (*cnt >= capacity)
 				continue;
-			target = &groups[groups_cnt];
-			target->id = (int)id;
-			target->device_count = 0;
-			groups_cnt++;
+			target = &groups[*cnt];
+			target->group_id = (unsigned int)id;
+			target->nr_devices = 0;
+			(*cnt)++;
 		}
 
-		if (target->device_count >= IOMMU_GROUP_NR_DEVICES)
+		if (target->nr_devices >= IOMMU_GROUP_NR_DEVICES)
 			continue;
 
-		pci_dev = &target->devices[target->device_count];
+		pci_dev = &target->devices[target->nr_devices];
 
 		string_buffer_clear(buf);
 		string_buffer_append(buf, pci_devices_path);
@@ -175,16 +181,15 @@ ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
 		if (iommu_read_pci_device((const char *)buf->data, pci_dev) < 0)
 			continue;
 
-		target->device_count++;
+		target->nr_devices++;
 	}
 
 	if (errno) {
-		ret = -errno;
 		closedir(dir);
-		return ret;
+		return false;
 	}
 
-	iommu_groups_sort(groups, groups_cnt);
+	iommu_groups_sort(groups, *cnt);
 	closedir(dir);
-	return groups_cnt;
+	return true;
 }

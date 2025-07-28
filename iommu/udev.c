@@ -8,6 +8,7 @@
 #include <libgen.h>
 #include <libudev.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,46 +18,38 @@
 #include "pci.h"
 #include "string-buffer.h"
 
-static int iommu_group_id(struct udev_device *dev)
+static bool iommu_group_id(struct udev_device *dev, unsigned int *id)
 {
-	const char *sysfs_path;
 	STRING_BUFFER(path_buf, 512);
+	const char *sysfs_path;
 	char target[512];
+	long parsed_id;
 	char *endptr;
 	ssize_t len;
-	long id;
-	int ret = 0;
 
 	sysfs_path = udev_device_get_syspath(dev);
 	if (!sysfs_path)
-		return -ENOENT;
+		return false;
 
 	string_buffer_append(path_buf, sysfs_path);
 	string_buffer_append(path_buf, "/iommu_group");
 
-	if (path_buf->status & STRING_BUFFER_OVERFLOW) {
-		ret = -E2BIG;
-		goto out;
-	}
+	if (path_buf->status & STRING_BUFFER_OVERFLOW)
+		return false;
 
 	len = readlink((const char *)path_buf->data, target, sizeof(target) - 1);
-	if (len < 0) {
-		ret = -errno;
-		goto out;
-	}
+	if (len < 0)
+		return false;
 
 	target[len] = '\0';
 
 	errno = 0;
-	id = strtol(basename(target), &endptr, 10);
-	if (errno == ERANGE || *endptr != '\0') {
-		ret = -EINVAL;
-		goto out;
-	}
+	parsed_id = strtol(basename(target), &endptr, 10);
+	if (errno == ERANGE || *endptr != '\0' || parsed_id < 0)
+		return false;
 
-	ret = (int)id;
-out:
-	return ret;
+	*id = (unsigned int)parsed_id;
+	return true;
 }
 
 static int iommu_read_pci_device(struct udev_device *dev,
@@ -104,33 +97,31 @@ static int iommu_read_pci_device(struct udev_device *dev,
 	return 0;
 }
 
-static int iommu_get_group(struct udev *udev,
-			   struct udev_list_entry *dev_list_entry,
-			   struct iommu_group *groups, size_t *groups_cnt,
-			   size_t groups_size)
+static bool iommu_get_group(struct udev *udev,
+			    struct udev_list_entry *dev_list_entry,
+			    struct iommu_group *groups, unsigned int *groups_cnt,
+			    unsigned int groups_size)
 {
-	struct udev_device *dev;
 	struct pci_device *pci_dev;
 	struct iommu_group *target;
+	struct udev_device *dev;
+	unsigned int group_id;
 	const char *path;
-	int group_id;
-	size_t i;
-	int ret = 0;
+	unsigned int i;
 
 	path = udev_list_entry_get_name(dev_list_entry);
 	dev = udev_device_new_from_syspath(udev, path);
 	if (!dev)
-		return 0;
+		return true;
 
-	group_id = iommu_group_id(dev);
-	if (group_id < 0) {
-		ret = 0;
-		goto out;
+	if (!iommu_group_id(dev, &group_id)) {
+		udev_device_unref(dev);
+		return true;
 	}
 
 	target = NULL;
 	for (i = 0; i < *groups_cnt; i++) {
-		if (groups[i].id == group_id) {
+		if (groups[i].group_id == group_id) {
 			target = &groups[i];
 			break;
 		}
@@ -138,76 +129,68 @@ static int iommu_get_group(struct udev *udev,
 
 	if (!target) {
 		if (*groups_cnt >= groups_size) {
-			ret = -E2BIG;
-			goto out;
+			udev_device_unref(dev);
+			return false;
 		}
 
 		target = &groups[*groups_cnt];
-		target->id = group_id;
-		target->device_count = 0;
+		target->group_id = group_id;
+		target->nr_devices = 0;
 		(*groups_cnt)++;
 	}
 
-	if (target->device_count >= IOMMU_GROUP_NR_DEVICES) {
-		ret = -E2BIG;
-		goto out;
+	if (target->nr_devices >= IOMMU_GROUP_NR_DEVICES) {
+		udev_device_unref(dev);
+		return false;
 	}
 
-	pci_dev = &target->devices[target->device_count];
-	ret = iommu_read_pci_device(dev, pci_dev);
-	if (ret < 0) {
-		ret = 0;
-		goto out;
-	}
+	pci_dev = &target->devices[target->nr_devices];
+	iommu_read_pci_device(dev, pci_dev);
 
-	target->device_count++;
-
-out:
+	target->nr_devices++;
 	udev_device_unref(dev);
-	return ret;
+
+	return true;
 }
 
-ssize_t iommu_groups_read(struct iommu_group *groups, size_t groups_size)
+bool iommu_groups_read(struct iommu_group *groups, unsigned int *cnt,
+		       unsigned int capacity)
 {
-	struct udev *udev = NULL;
-	struct udev_enumerate *enumerate = NULL;
-	struct udev_list_entry *devices;
-	struct udev_list_entry *dev_list_entry;
-	size_t groups_cnt = 0;
-	int ret = 0;
+	struct udev *udev;
+	struct udev_enumerate *enumerate;
+	struct udev_list_entry *devices, *dev_list_entry;
+	bool ret = true;
+
+	*cnt = 0;
 
 	udev = udev_new();
-	if (!udev) {
-		ret = -ENOMEM;
-		goto out;
-	}
+	if (!udev)
+		return false;
 
 	enumerate = udev_enumerate_new(udev);
 	if (!enumerate) {
-		ret = -ENOMEM;
-		goto out_unref_udev;
+		udev_unref(udev);
+		return false;
 	}
 
 	udev_enumerate_add_match_subsystem(enumerate, "pci");
 	udev_enumerate_scan_devices(enumerate);
-
 	devices = udev_enumerate_get_list_entry(enumerate);
 
 	udev_list_entry_foreach(dev_list_entry, devices)
 	{
-		ret = iommu_get_group(udev, dev_list_entry, groups, &groups_cnt,
-				      groups_size);
-		if (ret != 0)
-			goto out_unref_enumerate;
+		if (!iommu_get_group(udev, dev_list_entry, groups, cnt,
+				     capacity)) {
+			ret = false;
+			break;
+		}
 	}
 
-	iommu_groups_sort(groups, groups_cnt);
-	ret = groups_cnt;
+	if (ret)
+		iommu_groups_sort(groups, *cnt);
 
-out_unref_enumerate:
 	udev_enumerate_unref(enumerate);
-out_unref_udev:
 	udev_unref(udev);
-out:
+
 	return ret;
 }
