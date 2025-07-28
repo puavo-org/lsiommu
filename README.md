@@ -1,7 +1,9 @@
 # lsiommu
 
-A command-line utility for Linux, which lists IOMMU groups and the associated
-PCI devices.
+`lsiommu` is a command-line tool for Linux that lists IOMMU groups and PCI
+devices. The output is by default plain text but can be optionally set to
+JSON. `lsiommu` can be compile-time selected to discover devices either
+from udev (the default) or sysfs.
 
 ## Dependencies
 

@@ -8,13 +8,16 @@ lsiommu \- list all IOMMU groups
 [\-h|\-\-help]
 .SH DESCRIPTION
 .B lsiommu
-lists all IOMMU groups and their associated PCI devices. By default, it uses the
-.BR libudev (3)
-library to discover hardware, query device properties, and determine IOMMU groupings. This can be changed to a manual
-.BR sysfs (5)
-filesystem scan at compile-time.
+is a command-line tool for Linux that lists IOMMU groups and PCI
+devices. The output is by default plain text but can be optionally set
+to JSON. `lsiommu` can be compile-time selected to discover devices
+either from
+.BR udev (7)
+(the default) or
+.BR sysfs (5).
 .PP
-Groups are sorted by their numeric ID, and devices within each group are sorted by their PCI address.
+Groups are sorted by their numeric ID, and devices within each group
+are sorted by their PCI address.
 .SH OPTIONS
 .TP
 .B \-\-format \fIformat\fP
